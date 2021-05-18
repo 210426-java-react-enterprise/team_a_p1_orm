@@ -8,7 +8,7 @@ import com.revature.ATeamORM.util.Id;
 public class AppUser {
 
     @Id
-    @Column(name = "user_id")
+    @Column(name = "id")
     private int id;
 
     @Column(name = "username")
