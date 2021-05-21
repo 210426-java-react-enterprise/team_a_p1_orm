@@ -2,6 +2,8 @@ package com.revature.ATeamORM.repos;
 
 import com.revature.ATeamORM.exceptions.DataSourceException;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,9 +12,10 @@ import java.util.ArrayList;
 
 public class ObjectRepo {
 
-    public void save(Connection conn, Object object, String fromObject, String tableName, ArrayList<String> columns) {
+    public void save(Connection conn, Object object, String fromObject, String tableName, ArrayList<String> columns) throws NoSuchMethodException {
 
-        object.getClass();
+        Class theClass = object.getClass();
+        Method method = theClass.getMethod("setId",Integer.class);
 
         String[] objects = fromObject.split(",");
 
@@ -39,12 +42,16 @@ public class ObjectRepo {
             if (rowsInserted != 0) {
                 ResultSet rs = pstmt.getGeneratedKeys();
                 while (rs.next()) {
- //                   object.setId(rs.getInt("user_id"));
+                    method.invoke(object,rs.getInt("user_id"));
                 }
             }
 
         } catch (SQLException e) {
             throw new DataSourceException();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
         }
 
     }
