@@ -9,4 +9,6 @@ public @interface JDBCConnection {
 	String url();
 	String username();
 	String password();
+	String schema() default "";
+	String dbType() default "org.postgresql.Driver";
 }
