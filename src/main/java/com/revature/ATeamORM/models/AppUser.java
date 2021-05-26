@@ -2,12 +2,12 @@ package com.revature.ATeamORM.models;
 
 import com.revature.ATeamORM.util.annotations.Column;
 import com.revature.ATeamORM.util.annotations.Entity;
-import com.revature.ATeamORM.util.annotations.PrimaryKey;
+import com.revature.ATeamORM.util.annotations.Id;
 
-@Entity(name = "app_users")
+@Entity(name = "appusers")
 public class AppUser {
 
-    @PrimaryKey
+    @Id
     @Column(name = "id")
     private int id;
 
