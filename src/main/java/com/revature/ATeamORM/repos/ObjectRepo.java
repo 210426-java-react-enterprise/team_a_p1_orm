@@ -2,21 +2,26 @@ package com.revature.ATeamORM.repos;
 
 import com.revature.ATeamORM.exceptions.DataSourceException;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class ObjectRepo {
 
-    public void create(Connection conn, Object object, String tableName, Map<String, String> columns) {
+    public void create(Connection conn, Object object) {
 
         try{
 
             Class theClass = object.getClass();
+
+            Field[] fields = theClass.getAllDeclaredFields();
             Method method = theClass.getMethod("setId",Integer.class);
 
             StringBuilder sql = new StringBuilder("insert into " + tableName + " (");
@@ -61,9 +66,11 @@ public class ObjectRepo {
 
     }
 
-    public ResultSet read(Connection conn, String table, Map<String, String> columns) {
+    public <T> List<T> read(Connection conn, Object o) {
 
-        ResultSet rs = null;
+        ArrayList<T> objects = new ArrayList<T>();
+
+        Class<?> oClass = o.getClass();
 
         try {
 
