@@ -1,10 +1,10 @@
 package com.revature.ATeamORM.models;
 
-import com.revature.ATeamORM.util.Column;
-import com.revature.ATeamORM.util.Entity;
-import com.revature.ATeamORM.util.Id;
+import com.revature.ATeamORM.util.annotations.Column;
+import com.revature.ATeamORM.util.annotations.Entity;
+import com.revature.ATeamORM.util.annotations.Id;
 
-@Entity(name = "app_users")
+@Entity(name = "appusers")
 public class AppUser {
 
     @Id
