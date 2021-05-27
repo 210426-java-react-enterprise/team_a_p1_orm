@@ -1,12 +1,8 @@
 package com.revature.ATeamORM.repos;
 
 import com.revature.ATeamORM.exceptions.DataSourceException;
-import com.revature.ATeamORM.util.annotations.Column;
-import com.revature.ATeamORM.util.annotations.Id;
 import com.revature.ATeamORM.util.annotations.Table;
 import com.revature.ATeamORM.util.datasource.Result;
-
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -14,69 +10,124 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import com.revature.ATeamORM.util.annotations.Entity;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class ObjectRepo {
 
-    public void create(Connection conn, Object object, String tableName, Map<String, String> columns) {
-
-        Class<?> oClass = object.getClass();
+    public void create(Connection conn, Object object) throws SQLException {
 
         try{
 
-            Class theClass = object.getClass();
-            Method method = theClass.getMethod("setId",Integer.class);
+            Class<?> oClass = Objects.requireNonNull(object.getClass());
 
-            StringBuilder sql = new StringBuilder("insert into " + tableName + " (");
+            if (!oClass.isAnnotationPresent(Entity.class)) {
+                throw new RuntimeException("This is not an entity class!");
+            }
+
+            Field[] fields = oClass.getDeclaredFields();
+            Method[] methods = oClass.getDeclaredMethods();
+
+            StringBuilder sql = new StringBuilder("insert into " + getTableName(oClass) + " (");
             int i = 1;
-            for (String column: columns.keySet()) {
-                sql.append(column);
-                if (i < columns.size()) {
+            for (Field field: fields) {
+                field.setAccessible(true);
+                sql.append(field.getName());
+                if (i < fields.length) {
                     sql.append(", ");
                 }
+                field.setAccessible(false);
                 i++;
             }
             sql.append(") values (");
             i = 1;
-            for (String value: columns.values()) {
-                sql.append(value);
-                i++;
-                if (i < columns.size()) {
+            for (Field field: fields) {
+                field.setAccessible(true);
+                String fieldCapital = field.getName().substring(0, 1).toUpperCase() + field.getName().substring(1);
+                for(Method method: methods) {
+                    if (method.getName().equals("get" + fieldCapital)) {
+                        sql.append(method.invoke(object));
+                    }
+                }
+                if (i < fields.length) {
                     sql.append(", ");
                 }
+                field.setAccessible(false);
+                i++;
             }
             sql.append(")");
 
+
             PreparedStatement pstmt = conn.prepareStatement(String.valueOf(sql), new String[] { "id" });
             int rowsInserted = pstmt.executeUpdate();
-
+            
             if (rowsInserted != 0) {
                 ResultSet rs = pstmt.getGeneratedKeys();
                 while (rs.next()) {
-                    method.invoke(object,rs.getInt("id"));
+                    for(Method method: methods) {
+                        if (method.getName().equals("setId")) {
+                            method.invoke(object,rs.getInt("id"));
+                        }
+                    }
                 }
             }
 
-        } catch (SQLException e) {
-            throw new DataSourceException();
         } catch (InvocationTargetException e) {
             System.out.println("Cannot invoke method");
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
-        } catch (NoSuchMethodException e) {
-            System.out.println("No such method exists");
         }
 
     }
 
-    public <T> Result<T> read(Connection conn, String table, Map<String, String> columns) {
+    @SuppressWarnings({"unchecked"})
+    public <T> Result<T> read(Connection conn, Class<?> clazz, String fieldName, T fieldValue) {
+
+        ArrayList<T> results = new ArrayList<T>();
+        
+        Class<?> oClass = Objects.requireNonNull(o.getClass());
+        
+        Entity entityRead = oClass.getAnnotation(Entity.class);
+        String tableName = entityRead.name();
 
         List<T> list = new ArrayList<>();
         ResultSet rs = null;
-
-        try {
+        Method[] methods = oClass.getDeclaredMethods();
+        
+        Field[] fields = oClass.getDeclaredFields();
+        ArrayList<String> fieldNames = new ArrayList<>();
+        
+        String wantedNames = "";
+        String wantedValues = "";
+        
+        for(Field field: fields){
+            field.setAccessible(true);
+            String tmp = (String)field.get(o);
+            if(!tmp.equals("") || !tmp.equals("0")){
+                wantedNames += field.getName() +", ";
+                wantedValues += tmp + ", ";
+            }
+            
+            field.setAccessible(false);
+        }
+    
+        String[] namesArray = wantedNames.substring(0,wantedNames.length()-1)
+                                      .split(",");
+        
+        String[] valueArray = wantedValues.substring(0,wantedNames.length()-1)
+                                    .split(",");
+        
+        String sql = "select * from "+ tableName + " where " + namesArray[0] +"="+ valueArray[0];
+        
+        Statement pstmt = conn.createStatement();
+        ResultSet resultSet = pstmt.executeQuery(sql);
+        
+        
+       /* try {
 
             StringBuilder sql = new StringBuilder("select * from " + table + " where ");
             int i = 1;
@@ -100,29 +151,47 @@ public class ObjectRepo {
 
         } catch (SQLException e) {
             throw new DataSourceException();
-        }
+        }*/
 
         return new Result(list);
-
     }
 
-    public void update(Connection conn, Object object, String table, Map<String, String> columns) {
+    public void update(Connection conn, Object object) throws SQLException {
 
         try {
+            Class<?> oClass = Objects.requireNonNull(object.getClass());
 
-            Class theClass = object.getClass();
-            Method method = theClass.getMethod("getId",Integer.class);
-            Method otherMethod = theClass.getMethod("setId",Integer.class);
+            if (!oClass.isAnnotationPresent(Entity.class)) {
+                throw new RuntimeException("This is not an entity class!");
+            }
 
-            StringBuilder sql = new StringBuilder("update "  + table + " set ");
+            Field[] fields = oClass.getDeclaredFields();
+            Method[] methods = oClass.getDeclaredMethods();
+
+            StringBuilder sql = new StringBuilder("update "  + getTableName(oClass) + " set ");
             int i = 1;
-            for (String column: columns.keySet()) {
-                sql.append(column + " = " + columns.get(column));
-                if (i < columns.size()) {
+            for (Field field: fields) {
+                field.setAccessible(true);
+                String fieldCapital = field.getName().substring(0, 1).toUpperCase() + field.getName().substring(1);
+                for (Method method: methods) {
+                    if (method.getName().equals("get" + fieldCapital)) {
+                        sql.append(field.getName())
+                                .append(" = ")
+                                .append(method.invoke(object));
+                    }
+                }
+                if (i < fields.length) {
                     sql.append(", ");
                 }
+                field.setAccessible(false);
+                i++;
             }
-            sql.append(" where id = " + method.invoke(object));
+            sql.append(" where id = ");
+            for (Method method: methods) {
+                if (method.getName().equals("getId")) {
+                    sql.append(method.invoke(object));
+                }
+            }
 
             PreparedStatement pstmt = conn.prepareStatement(String.valueOf(sql));
 
@@ -131,33 +200,37 @@ public class ObjectRepo {
             if (rowsUpdated != 0) {
                 ResultSet rs = pstmt.getGeneratedKeys();
                 while (rs.next()) {
-                    otherMethod.invoke(object, rs.getInt("id"));
+                    for (Method method: methods) {
+                        if (method.getName().equals("setId")) {
+                            method.invoke(object, rs.getInt("id"));
+                        }
+                    }
                 }
             }
 
-        } catch (NoSuchMethodException e) {
-            System.out.println("No such method exists");
         } catch (InvocationTargetException e) {
             System.out.println("Cannot invoke that method");
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
-        } catch (SQLException e) {
-            throw new DataSourceException();
         }
     }
 
-    public void delete(Connection conn, Object object, String table) {
+    public void delete(Connection conn, Object object) throws SQLException {
 
         try {
+            Class<?> oClass = Objects.requireNonNull(object.getClass());
 
-            Class theClass = object.getClass();
-            Method method = theClass.getMethod("getId",Integer.class);
+            if (!oClass.isAnnotationPresent(Entity.class)) {
+                throw new RuntimeException("This is not an entity class!");
+            }
 
-            String sql = "delete from " + table + " where id = " + method.invoke(object);
+            Method method = oClass.getMethod("getId");
+
+            String sql = "delete from " + getTableName(oClass) + " where id = " + method.invoke(object);
 
             PreparedStatement pstmt = conn.prepareStatement(sql);
 
-            int rowsUpdated = pstmt.executeUpdate();
+            pstmt.executeUpdate();
 
         } catch (NoSuchMethodException e) {
             System.out.println("No such method exists");
@@ -165,10 +238,84 @@ public class ObjectRepo {
             System.out.println("Cannot invoke that method");
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
-        } catch (SQLException e) {
-            throw new DataSourceException();
         }
     }
+    
+//    //Connection conn,
+//    public void sqlUpdateQuery( Object o) throws IllegalAccessException, SQLException {
+//        Class<?> oClass = Objects.requireNonNull(o.getClass());
+//
+//        if (!oClass.isAnnotationPresent(Entity.class)) {
+//            throw new RuntimeException("This is not an entity class!");
+//        }
+//
+//
+//        //Get name of entity, next we would check if entity(name) is empty, if so
+//        //then we use name of class.
+//        Entity anoEntity = oClass.getAnnotation(Entity.class);
+//        String tableName = anoEntity.name();
+//        String nameOfClass = oClass.getSimpleName();
+//
+//        String sqlUpdater = "update " + tableName + " set ";//column = value
+//        String values = "";
+//        String fieldNames = "";
+//        String tmpId = "";
+//
+//
+//        //get the fields to be put into the sql statement
+//        Field[] oClassFields = oClass.getDeclaredFields();
+//        for (Field field : oClassFields) {
+//            field.setAccessible(true);
+//
+//            if (field.isAnnotationPresent(Id.class)) {
+//                tmpId = field.get(o).toString();
+//            }else if (!field.isAnnotationPresent(Id.class)){
+//                System.out.println("Field name is==> " + field.getName() + " with value is==> " + field.get(o).toString());
+//                //System.out.println(values);
+//                System.out.println(sqlUpdater);
+//                System.out.println();
+//                values = (String) field.get(o).toString() + ",";
+//                fieldNames = field.getName();
+//                sqlUpdater += fieldNames + " = " + values ;
+//
+//            }
+//
+//
+//            field.setAccessible(false);
+//        }
+//        sqlUpdater = sqlUpdater.substring(0,sqlUpdater.length()-1);
+//        sqlUpdater += " where id = " + tmpId;
+//        System.out.println(sqlUpdater);
+//        PreparedStatement pstmt = null;
+//
+//       // pstmt = conn.prepareStatement(sqlUpdater);
+//        //pstmt.executeUpdate();
+//
+//
+//
+//    }
+    
+   /* public void sqlDelete(Object o, Connection conn) {
+        Class<?> oClass = Objects.requireNonNull(o.getClass());
+        
+        if (!oClass.isAnnotationPresent(Entity.class)) {
+            throw new RuntimeException("Not an entity type.");
+        }
+        
+        //get name of table which is in entity name or if empty use class name
+        Entity anoEntity = oClass.getAnnotation(Entity.class);
+        String tableName = anoEntity.name();
+        
+        String sql = "delete from " + tableName + " where ";
+        
+        Field[] oClassFields = oClass.getDeclaredFields();
+        for (Field field : oClassFields) {
+            field.setAccessible(true);
+            if (field.getAnnotation()){
+            
+            }
+        }
+    }*/
 
     private String getTableName(Class<?> clazz) {
         String tableName = clazz.getAnnotation(Table.class).name();
@@ -177,20 +324,6 @@ public class ObjectRepo {
         }
         return tableName;
     }
-
-//    private String getColumnName(Class<?> clazz) {
-//        //String columnName = clazz.getAnnotation(Column.class);
-//
-//        String fieldName = "";
-//        Field[] fields = clazz.getDeclaredFields();
-//        for (Field field : fields) {
-//            if (field.isAnnotationPresent(Id.class)) {
-//                fieldName = field.getName();
-//                break;
-//            }
-//
-//        }
-//    }
 
 }
 
