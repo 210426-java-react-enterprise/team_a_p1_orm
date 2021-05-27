@@ -1,6 +1,7 @@
 package com.revature.ATeamORM.util.annotations;
 
 import java.lang.annotation.*;
+import java.sql.ResultSet;
 
 @Documented
 @Target(ElementType.FIELD)

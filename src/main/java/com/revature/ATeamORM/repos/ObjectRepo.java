@@ -1,18 +1,28 @@
 package com.revature.ATeamORM.repos;
 
 import com.revature.ATeamORM.exceptions.DataSourceException;
+import com.revature.ATeamORM.util.annotations.Column;
+import com.revature.ATeamORM.util.annotations.Id;
+import com.revature.ATeamORM.util.annotations.Table;
+import com.revature.ATeamORM.util.datasource.Result;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class ObjectRepo {
 
     public void create(Connection conn, Object object, String tableName, Map<String, String> columns) {
+
+        Class<?> oClass = object.getClass();
 
         try{
 
@@ -61,8 +71,9 @@ public class ObjectRepo {
 
     }
 
-    public ResultSet read(Connection conn, String table, Map<String, String> columns) {
+    public <T> Result<T> read(Connection conn, String table, Map<String, String> columns) {
 
+        List<T> list = new ArrayList<>();
         ResultSet rs = null;
 
         try {
@@ -91,7 +102,7 @@ public class ObjectRepo {
             throw new DataSourceException();
         }
 
-        return rs;
+        return new Result(list);
 
     }
 
@@ -159,4 +170,29 @@ public class ObjectRepo {
         }
     }
 
+    private String getTableName(Class<?> clazz) {
+        String tableName = clazz.getAnnotation(Table.class).name();
+        if (tableName.equals("")) {
+            tableName = clazz.getName();
+        }
+        return tableName;
+    }
+
+//    private String getColumnName(Class<?> clazz) {
+//        //String columnName = clazz.getAnnotation(Column.class);
+//
+//        String fieldName = "";
+//        Field[] fields = clazz.getDeclaredFields();
+//        for (Field field : fields) {
+//            if (field.isAnnotationPresent(Id.class)) {
+//                fieldName = field.getName();
+//                break;
+//            }
+//
+//        }
+//    }
+
 }
+
+
+
