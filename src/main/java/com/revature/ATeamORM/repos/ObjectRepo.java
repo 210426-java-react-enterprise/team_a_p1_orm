@@ -12,8 +12,6 @@ import java.lang.reflect.Method;
 import java.sql.*;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class ObjectRepo {
@@ -22,16 +20,16 @@ public class ObjectRepo {
 
         try{
 
-            Class<?> oClass = Objects.requireNonNull(object.getClass());
+            Class<?> clazz = Objects.requireNonNull(object.getClass());
 
-            if (!oClass.isAnnotationPresent(Entity.class)) {
+            if (!clazz.isAnnotationPresent(Entity.class)) {
                 throw new RuntimeException("This is not an entity class!");
             }
 
-            Field[] fields = oClass.getDeclaredFields();
-            Method[] methods = oClass.getDeclaredMethods();
+            Field[] fields = clazz.getDeclaredFields();
+            Method[] methods = clazz.getDeclaredMethods();
 
-            StringBuilder sql = new StringBuilder("insert into " + getTableName(oClass) + " (");
+            StringBuilder sql = new StringBuilder("insert into " + getTableName(clazz) + " (");
             int i = 1;
             for (Field field: fields) {
                 field.setAccessible(true);
@@ -87,28 +85,25 @@ public class ObjectRepo {
     
     
     @SuppressWarnings({"unchecked"})
-    public  <T> ArrayList<T> read(Connection conn, Class<?> clazz, String fieldName, T fieldvalue) throws IllegalAccessException, SQLException {
+    public  <T> ArrayList<T> read(Connection conn, Class<?> clazz) throws IllegalAccessException, SQLException {
 
         ArrayList<T> results = new ArrayList<T>();
         
-        Class<?> oClass = Objects.requireNonNull(o.getClass());
-        
-        Entity entityRead = oClass.getAnnotation(Entity.class);
+
+        Entity entityRead = clazz.getAnnotation(Entity.class);
         String tableName = entityRead.name();
         
 
-        ResultSet rs = null;
-        Method[] methods = oClass.getDeclaredMethods();
+        Method[] methods = clazz.getDeclaredMethods();
         
-        Field[] fields = oClass.getDeclaredFields();
-        ArrayList<String> fieldNames = new ArrayList<>();
-        
+        Field[] fields = clazz.getDeclaredFields();
+
         String wantedNames = "";
         String wantedValues = "";
         
         for(Field field: fields){
             field.setAccessible(true);
-            String tmp = (String)field.get(o);
+            String tmp = field.getName();
             if(!tmp.equals("") || !tmp.equals("0")){
                 wantedNames += field.getName() +", ";
                 wantedValues += tmp + ", ";
@@ -163,16 +158,16 @@ public class ObjectRepo {
 
         try {
 
-            Class<?> oClass = Objects.requireNonNull(object.getClass());
+            Class<?> clazz = Objects.requireNonNull(object.getClass());
 
-            if (!oClass.isAnnotationPresent(Entity.class)) {
+            if (!clazz.isAnnotationPresent(Entity.class)) {
                 throw new RuntimeException("This is not an entity class!");
             }
 
-            Field[] fields = oClass.getDeclaredFields();
-            Method[] methods = oClass.getDeclaredMethods();
+            Field[] fields = clazz.getDeclaredFields();
+            Method[] methods = clazz.getDeclaredMethods();
 
-            StringBuilder sql = new StringBuilder("update "  + getTableName(oClass) + " set ");
+            StringBuilder sql = new StringBuilder("update "  + getTableName(clazz) + " set ");
             int i = 1;
             for (Field field: fields) {
                 field.setAccessible(true);
@@ -225,15 +220,15 @@ public class ObjectRepo {
 
         try {
 
-            Class<?> oClass = Objects.requireNonNull(object.getClass());
+            Class<?> clazz = Objects.requireNonNull(object.getClass());
 
-            if (!oClass.isAnnotationPresent(Entity.class)) {
+            if (!clazz.isAnnotationPresent(Entity.class)) {
                 throw new RuntimeException("This is not an entity class!");
             }
 
-            Method method = oClass.getMethod("getId");
+            Method method = clazz.getMethod("getId");
 
-            String sql = "delete from " + getTableName(oClass) + " where id = " + method.invoke(object);
+            String sql = "delete from " + getTableName(clazz) + " where id = " + method.invoke(object);
 
             PreparedStatement pstmt = conn.prepareStatement(sql);
 
@@ -252,18 +247,18 @@ public class ObjectRepo {
     
 //    //Connection conn,
 //    public void sqlUpdateQuery( Object o) throws IllegalAccessException, SQLException {
-//        Class<?> oClass = Objects.requireNonNull(o.getClass());
+//        Class<?> clazz = Objects.requireNonNull(o.getClass());
 //
-//        if (!oClass.isAnnotationPresent(Entity.class)) {
+//        if (!clazz.isAnnotationPresent(Entity.class)) {
 //            throw new RuntimeException("This is not an entity class!");
 //        }
 //
 //
 //        //Get name of entity, next we would check if entity(name) is empty, if so
 //        //then we use name of class.
-//        Entity anoEntity = oClass.getAnnotation(Entity.class);
+//        Entity anoEntity = clazz.getAnnotation(Entity.class);
 //        String tableName = anoEntity.name();
-//        String nameOfClass = oClass.getSimpleName();
+//        String nameOfClass = clazz.getSimpleName();
 //
 //        String sqlUpdater = "update " + tableName + " set ";//column = value
 //        String values = "";
@@ -272,7 +267,7 @@ public class ObjectRepo {
 //
 //
 //        //get the fields to be put into the sql statement
-//        Field[] oClassFields = oClass.getDeclaredFields();
+//        Field[] oClassFields = clazz.getDeclaredFields();
 //        for (Field field : oClassFields) {
 //            field.setAccessible(true);
 //
@@ -305,19 +300,19 @@ public class ObjectRepo {
 //    }
     
    /* public void sqlDelete(Object o, Connection conn) {
-        Class<?> oClass = Objects.requireNonNull(o.getClass());
+        Class<?> clazz = Objects.requireNonNull(o.getClass());
         
-        if (!oClass.isAnnotationPresent(Entity.class)) {
+        if (!clazz.isAnnotationPresent(Entity.class)) {
             throw new RuntimeException("Not an entity type.");
         }
         
         //get name of table which is in entity name or if empty use class name
-        Entity anoEntity = oClass.getAnnotation(Entity.class);
+        Entity anoEntity = clazz.getAnnotation(Entity.class);
         String tableName = anoEntity.name();
         
         String sql = "delete from " + tableName + " where ";
         
-        Field[] oClassFields = oClass.getDeclaredFields();
+        Field[] oClassFields = clazz.getDeclaredFields();
         for (Field field : oClassFields) {
             field.setAccessible(true);
             if (field.getAnnotation()){
