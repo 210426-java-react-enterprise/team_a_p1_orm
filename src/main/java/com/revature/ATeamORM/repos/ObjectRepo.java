@@ -5,6 +5,8 @@ import com.revature.ATeamORM.util.annotations.Column;
 import com.revature.ATeamORM.util.annotations.Id;
 import com.revature.ATeamORM.util.annotations.Table;
 import com.revature.ATeamORM.util.datasource.Result;
+
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -43,6 +45,7 @@ public class ObjectRepo {
             // Gets the column_name and appends it to the sql string for each field annotated with @Column
             for (Field field: fields) {
                 field.setAccessible(true);
+                field.set(object, 5);
                 sql.append(getColumnName(field));
                 if (i < fields.length) {
                     sql.append(", ");
@@ -94,39 +97,52 @@ public class ObjectRepo {
     @SuppressWarnings({"unchecked"})
     public <T> Result<T> read(Connection conn, Class<?> clazz, String fieldName, T fieldValue) throws SQLException {
 
-        List<T> list = new ArrayList<T>();
+        List<T> objectList = new ArrayList<>();
 
         // All classes passed in must be annotated with @Entity
         if (!clazz.isAnnotationPresent(Entity.class)) {
             throw new RuntimeException("This is not an entity class!");
         }
 
-        // Filters through fields in class for ones annotated with @Column but without the @Id annotation
+        // Filters through fields in class for ones annotated with @Column
         Field[] fields = Arrays.stream(clazz.getDeclaredFields())
                 .filter(f -> f.isAnnotationPresent(Column.class))
                 .toArray(Field[]::new);
 
-        // Filters through methods in class for setters
-        Method[] setMethods = Arrays.stream(clazz.getDeclaredMethods())
-                .filter(m -> m.getName().contains("set"))
-                .toArray(Method[]::new);
-
         StringBuilder sql = new StringBuilder("select * from ").append(getTableName(clazz))
                                                                .append(" where ");
-        for (Field field : fields) {
-            field.setAccessible(true);
-            if (field.getName().equals(fieldName)) {
-                sql.append(getColumnName(field));
-                break;
+        try {
+            Field field = clazz.getDeclaredField(fieldName);
+            sql.append(getColumnName(field))
+               .append(" = ")
+               .append(encapsulateString(fieldValue));
+
+            Statement pstmt = conn.createStatement();
+            ResultSet rs = pstmt.executeQuery(sql.toString());
+
+            Constructor<?> objectConstructor = clazz.getConstructor();
+            while(rs.next()) {
+                T object = (T) Objects.requireNonNull(objectConstructor.newInstance());
+                objectList.add(generateObject(rs, fields, object));
             }
+        } catch (NoSuchMethodException e) {
+            System.out.println("Constructor does not exist!");
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            System.out.println("Cannot invoke constructor!");
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            System.out.println("Cannot instantiate object!");
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            System.out.println("Constructor is not public!");
+            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            System.out.println("Could not find {fieldName} in your {Class<?>}!");
+            e.printStackTrace();
         }
-        sql.append(" = ")
-           .append(fieldValue);
 
-        Statement pstmt = conn.createStatement();
-        ResultSet resultSet = pstmt.executeQuery(String.valueOf(sql));
-
-        return new Result(list);
+        return new Result<>(objectList);
     }
 
     public void update(Connection conn, Object object) throws SQLException {
@@ -269,6 +285,18 @@ public class ObjectRepo {
         return columnName;
     }
 
+    private <T> String encapsulateString (T t) {
+        StringBuilder s = new StringBuilder();
+        if (t.getClass().getSimpleName().equals("String")) {
+            s.append("\'")
+             .append(t)
+             .append("\'");
+        } else {
+            s.append(t);
+        }
+        return s.toString();
+    }
+
     private void insertId(ResultSet rs, Object o) throws SQLException, InvocationTargetException, IllegalAccessException {
         Class<?> oClass = Objects.requireNonNull(o.getClass());
         Method[] setMethods = Arrays.stream(oClass.getDeclaredMethods())
@@ -293,6 +321,30 @@ public class ObjectRepo {
             }
 
         }
+    }
+
+    private <T> T generateObject(ResultSet rs, Field[] fields, T object) throws SQLException, IllegalAccessException {
+        for (Field f: fields) {
+            switch (f.getType().getSimpleName()) {
+                case ("String"):
+                    f.set(object, rs.getString(getColumnName(f)));
+                    break;
+                case ("int"):
+                case ("Integer"):
+                    f.set(object, rs.getInt(getColumnName(f)));
+                    break;
+                case ("double"):
+                case ("Double"):
+                    f.set(object, rs.getDouble(getColumnName(f)));
+                    break;
+                case ("float"):
+                case ("Float"):
+                    f.set(object, rs.getFloat(getColumnName(f)));
+                case ("boolean"):
+                    f.set(object, rs.getBoolean(getColumnName(f)));
+            }
+        }
+        return object;
     }
 
 }
