@@ -1,8 +1,7 @@
 package com.revature.ATeamORM.repos;
 
-import com.revature.ATeamORM.exceptions.DataSourceException;
-import com.revature.ATeamORM.util.annotations.Entity;
-import com.revature.ATeamORM.util.annotations.Id;
+import com.revature.ATeamORM.exceptions.*;
+import com.revature.ATeamORM.util.annotations.*;
 
 
 import java.lang.reflect.Field;
@@ -204,8 +203,18 @@ public class ObjectRepo {
         }
     }
     
-    //Connection conn,
-    public void sqlUpdateQuery( Object o) throws IllegalAccessException, SQLException {
+    
+    
+    //WORKING update method!
+    /**
+     * Method for being able to to update a entry using Id. In other words the DB that will be references
+     * must have Id column and POJO must also have a ID column.
+     * @param conn      Connection to DB using JDBC.Please reference ConnectionFactory.
+     * @param o         Object with Entity anotation, else we throw RunTimeException
+     * @throws IllegalAccessException
+     * @throws SQLException
+     */
+    public void sqlUpdateQuery( Connection conn, Object o) throws IllegalAccessException, SQLException {
         Class<?> oClass = Objects.requireNonNull(o.getClass());
         
         if (!oClass.isAnnotationPresent(Entity.class)) {
@@ -217,48 +226,65 @@ public class ObjectRepo {
         //then we use name of class.
         Entity anoEntity = oClass.getAnnotation(Entity.class);
         String tableName = anoEntity.name();
-        String nameOfClass = oClass.getSimpleName();
         
-        String sqlUpdater = "update " + tableName + " set ";//column = value
-        String values = "";
+        String sqlUpdater = "update " + "public."+tableName + " set ";//column = value
         String fieldNames = "";
-        String tmpId = "";
-        
-        
+        String tmpIdName = "";
+        //first loop through to prepare statement
         //get the fields to be put into the sql statement
         Field[] oClassFields = oClass.getDeclaredFields();
-        for (Field field : oClassFields) {
+        for (int i = 0; i< oClassFields.length; i++){
+            Field field = oClassFields[i];
             field.setAccessible(true);
-            
+    
+    
             if (field.isAnnotationPresent(Id.class)) {
-                tmpId = field.get(o).toString();
+                Column cName = field.getAnnotation(Column.class);
+                tmpIdName = cName.name();
             }else if (!field.isAnnotationPresent(Id.class)){
                 System.out.println("Field name is==> " + field.getName() + " with value is==> " + field.get(o).toString());
                 //System.out.println(values);
                 System.out.println(sqlUpdater);
                 System.out.println();
-                values = (String) field.get(o).toString() + ",";
-                fieldNames = field.getName();
-                sqlUpdater += fieldNames + " = " + values ;
+                Column columnNames = field.getAnnotation(Column.class);
+                fieldNames = columnNames.name();
+                sqlUpdater += fieldNames + " =(?),";
     
             }
-            
-            
+    
+    
             field.setAccessible(false);
         }
-        sqlUpdater = sqlUpdater.substring(0,sqlUpdater.length()-1);
-        sqlUpdater += " where id = " + tmpId;
+        sqlUpdater = sqlUpdater.substring(0,sqlUpdater.length()-1) ;
+        sqlUpdater += " where "+tmpIdName+"= (?)";
         System.out.println(sqlUpdater);
-        PreparedStatement pstmt = null;
+    
+        PreparedStatement pstmt = conn.prepareStatement(sqlUpdater);
+    
+        String values = "";
+        Integer tmpId = 0;
         
-       // pstmt = conn.prepareStatement(sqlUpdater);
-        //pstmt.executeUpdate();
-        
-        
-        
+        for(int i = 1; i< oClassFields.length +1 ; i++){
+            Field field = oClassFields[i-1];
+            field.setAccessible(true);
+            
+            if(field.get(o) instanceof Integer){
+                if (field.isAnnotationPresent(Id.class)){
+                    tmpId = (Integer) field.get(o);
+                }else{
+                    pstmt.setInt(i-1,(Integer)field.get(o));
+                }
+            }else if(field.get(o) instanceof String){
+                pstmt.setString(i-1,(String)field.get(o));
+            }
+            field.setAccessible(false);
+        }
+        pstmt.setInt(oClassFields.length,tmpId);
+        pstmt.executeUpdate();
+    
     }
     
-   /* public void sqlDelete(Object o, Connection conn) {
+  /*  public void sqlDelete(Object o, Connection conn) {
         Class<?> oClass = Objects.requireNonNull(o.getClass());
         
         if (!oClass.isAnnotationPresent(Entity.class)) {
@@ -268,14 +294,16 @@ public class ObjectRepo {
         //get name of table which is in entity name or if empty use class name
         Entity anoEntity = oClass.getAnnotation(Entity.class);
         String tableName = anoEntity.name();
-        
+        String tmpId = "";
         String sql = "delete from " + tableName + " where ";
-        
+    
         Field[] oClassFields = oClass.getDeclaredFields();
         for (Field field : oClassFields) {
             field.setAccessible(true);
-            if (field.getAnnotation()){
-            
+        
+            if (field.isAnnotationPresent(Id.class)) {
+                tmpId = field.get(o).toString();
+                sql+= field.getName() + " =";
             }
         }
     }*/
