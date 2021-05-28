@@ -23,16 +23,16 @@ public class Session {
 		return null;
 	}
 
-	public void save() {
-
+	public void save(Object object) throws SQLException {
+		repo.update(connection, object);
 	}
 
-	public void insert() {
-
+	public void insert(Object object) throws SQLException {
+		repo.create(connection, object);
 	}
 
-	public void remove() {
-
+	public void remove(Object object) throws SQLException {
+		repo.delete(connection, object);
 	}
 
 }
