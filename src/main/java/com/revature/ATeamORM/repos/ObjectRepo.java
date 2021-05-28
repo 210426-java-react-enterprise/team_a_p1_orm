@@ -1,5 +1,6 @@
 package com.revature.ATeamORM.repos;
 
+
 import com.revature.ATeamORM.exceptions.DataSourceException;
 import com.revature.ATeamORM.util.annotations.Column;
 import com.revature.ATeamORM.util.annotations.Entity;
@@ -231,7 +232,9 @@ public class ObjectRepo {
         
         String sqlUpdater = "update " + "public." + tableName + " set ";//column = value
         String fieldNames = "";
+        String fieldValue="";
         String tmpIdName = "";
+        String tmpIdvalue ="";
         //first loop through to prepare statement
         //get the fields to be put into the sql statement
         Field[] oClassFields = oClass.getDeclaredFields();
@@ -241,26 +244,31 @@ public class ObjectRepo {
             if (field.isAnnotationPresent(Id.class)) {
                 Column cName = field.getAnnotation(Column.class);
                 tmpIdName = cName.name();
-            } else if (!field.isAnnotationPresent(Id.class)) {
-                System.out.println("Field name is==> " + field.getName() + " with value is==> " + field.get(o)
-                                                                                                       .toString());
+                tmpIdvalue = field.get(o).toString();
+            } else if (field.get(o) instanceof Integer) {
+                
                 //System.out.println(values);
-                System.out.println(sqlUpdater);
-                System.out.println();
                 Column columnNames = field.getAnnotation(Column.class);
                 fieldNames = columnNames.name();
-                sqlUpdater += fieldNames + " =(?),";
+                fieldValue = field.get(o).toString();
+                sqlUpdater += fieldNames + " = " + fieldValue +",";
+                
+            }else{
+                Column columnNames = field.getAnnotation(Column.class);
+                fieldNames = columnNames.name();
+                fieldValue = field.get(o).toString();
+                sqlUpdater += fieldNames + " = \'" + fieldValue +"\',";
                 
             }
             field.setAccessible(false);
         }
         sqlUpdater = sqlUpdater.substring(0, sqlUpdater.length() - 1);
-        sqlUpdater += " where " + tmpIdName + "= (?)";
+        sqlUpdater += " where " + tmpIdName + "= "+ tmpIdvalue;
         System.out.println(sqlUpdater);
         
         PreparedStatement pstmt = conn.prepareStatement(sqlUpdater);
-        
-        String values = "";
+        pstmt.executeUpdate();
+      /*  String values = "";
         Integer tmpId = 0;
         
         for (int i = 1; i < oClassFields.length + 1; i++) {
@@ -278,9 +286,9 @@ public class ObjectRepo {
             }
             field.setAccessible(false);
         }
-        pstmt.setInt(oClassFields.length, tmpId);
-        pstmt.executeUpdate();
-        
+        //pstmt.setInt(oClassFields.length, tmpId);
+       // pstmt.executeUpdate();
+        */
     }
     
     
