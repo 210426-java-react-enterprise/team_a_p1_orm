@@ -408,6 +408,14 @@ public class ObjectRepo {
         
     }
     
+    /**
+     * Method to determine if the unique provided columns are not in the database.
+     * @param conn
+     * @param o
+     * @return
+     * @throws SQLException
+     * @throws IllegalAccessException
+     */
     @SuppressWarnings({"unchecked"})
     public Boolean isEntryUnique(Connection conn, Object o) throws SQLException, IllegalAccessException {
         Class<?> oClass = Objects.requireNonNull(o.getClass());
