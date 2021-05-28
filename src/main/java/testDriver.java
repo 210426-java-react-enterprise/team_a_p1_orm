@@ -5,7 +5,7 @@ import com.revature.ATeamORM.util.annotations.JDBCConnection;
 public class testDriver {
 	public static void main(String[] args) {
 		
-		ObjectRepo or = new ObjectRepo();
+		//ObjectRepo or = new ObjectRepo();
 		/*try (Connection conn = ConnectionFactory.getInstance().getConnection(testDriver.class)){
 			System.out.println("donothing");
 		} catch (SQLException e) {
