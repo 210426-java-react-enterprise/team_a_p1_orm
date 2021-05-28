@@ -18,7 +18,7 @@ public class Session {
 		repo = new ObjectRepo();
 	}
 
-	<T> List<T> find(Class<?> clazz, String fieldName, T fieldValue) {
+	public <T> List<T> find(Class<?> clazz, String fieldName, T fieldValue) {
 		// return repo.read(connection, clazz, fieldName, fieldValue);
 		return null;
 	}
