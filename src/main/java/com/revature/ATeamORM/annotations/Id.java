@@ -1,4 +1,4 @@
-package com.revature.ATeamORM.util.annotations;
+package com.revature.ATeamORM.annotations;
 
 import java.lang.annotation.*;
 
@@ -6,6 +6,5 @@ import java.lang.annotation.*;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Id {
-
-
 }
+
