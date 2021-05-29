@@ -135,8 +135,9 @@ public class ObjectRepo {
             while(rs.next()) {
                 T object = (T) Objects.requireNonNull(objectConstructor.newInstance());
                 for (Field f : fields) {
-                    objectList.add(setObjectValues(rs, f, object, getColumnName(f)));
+                    setObjectValues(rs, f, object, getColumnName(f));
                 }
+                objectList.add(object);
 
             }
         } catch (NoSuchMethodException e) {
@@ -277,7 +278,7 @@ public class ObjectRepo {
         return s.toString();
     }
 
-    private <T> T setObjectValues(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
+    private <T> void setObjectValues(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
         field.setAccessible(true);
         switch (field.getType().getSimpleName()) {
             case ("String"):
@@ -300,7 +301,6 @@ public class ObjectRepo {
                 break;
         }
         field.setAccessible(false);
-        return object;
     }
 
 }
