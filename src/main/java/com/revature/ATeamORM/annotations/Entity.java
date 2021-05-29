@@ -1,10 +1,10 @@
-package com.revature.ATeamORM.util.annotations;
+package com.revature.ATeamORM.annotations;
 
 import java.lang.annotation.*;
 
 @Documented
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Table {
+public @interface Entity {
     String name() default "";
 }

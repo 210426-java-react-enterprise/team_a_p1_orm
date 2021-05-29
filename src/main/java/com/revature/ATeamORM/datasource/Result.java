@@ -1,4 +1,4 @@
-package com.revature.ATeamORM.util.datasource;
+package com.revature.ATeamORM.datasource;
 
 import java.util.List;
 

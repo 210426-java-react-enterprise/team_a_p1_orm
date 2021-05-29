@@ -1,20 +1,18 @@
 package com.revature.ATeamORM.repos;
 
-import com.revature.ATeamORM.exceptions.DataSourceException;
-import com.revature.ATeamORM.util.annotations.Column;
-import com.revature.ATeamORM.util.annotations.Id;
-import com.revature.ATeamORM.util.annotations.Table;
-import com.revature.ATeamORM.util.datasource.Result;
+import com.revature.ATeamORM.annotations.Column;
+import com.revature.ATeamORM.annotations.Id;
+import com.revature.ATeamORM.annotations.Table;
+import com.revature.ATeamORM.datasource.Result;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import com.revature.ATeamORM.util.annotations.Entity;
+import com.revature.ATeamORM.annotations.Entity;
 import java.sql.*;
 import java.util.*;
 
@@ -62,14 +60,18 @@ public class ObjectRepo {
             }
             sql.append(")");
 
+            Field field = Arrays.stream(oClass.getDeclaredFields()).filter(f -> f.isAnnotationPresent(Id.class)).findFirst().get();
+            field.setAccessible(true);
+            String fieldId = getColumnName(field);
+            field.setAccessible(false);
             // Puts sql string into a prepared statement, executes it, retrieves the id, then inserts new id back into object
-            PreparedStatement pstmt = conn.prepareStatement(sql.toString(), new String[] { "id" });
+            PreparedStatement pstmt = conn.prepareStatement(sql.toString(), new String[] { fieldId });
             if (pstmt.executeUpdate() != 0) {
                 ResultSet rs = pstmt.getGeneratedKeys();
                 while (rs.next()) {
-                    Field field = Arrays.stream(oClass.getDeclaredFields()).filter(f -> f.isAnnotationPresent(Id.class)).findFirst().get();
                     field.setAccessible(true);
-                    generateObject(rs, field, object, "id");
+                    setObjectValues(rs, field, object, fieldId);
+                    field.setAccessible(false);
                 }
             }
         } catch (IllegalAccessException e) {
@@ -134,7 +136,7 @@ public class ObjectRepo {
             while(rs.next()) {
                 T object = (T) Objects.requireNonNull(objectConstructor.newInstance());
                 for (Field f : fields) {
-                    objectList.add(generateObject(rs, f, object, getColumnName(f)));
+                    objectList.add(setObjectValues(rs, f, object, getColumnName(f)));
                 }
 
             }
@@ -180,7 +182,9 @@ public class ObjectRepo {
             // Goes through each @Column annotated field in class and appends sql string with "column_name = fieldValue,"
             for (Field field: fields) {
                 field.setAccessible(true);
-                sql.append(encapsulateString(field.get(object)));
+                sql.append(getColumnName(field))
+                   .append(" = ")
+                   .append(encapsulateString(field.get(object)));
                 if (i < fields.length) {
                     sql.append(", ");
                 }
@@ -205,7 +209,8 @@ public class ObjectRepo {
             // Loads sql string into a PreparedStatement and executes it, updating the database
             // Final sql string will look something like this:
             // update tableName set user_id = object.id, username = object.username, password = object.password where user_id = object.id
-            PreparedStatement pstmt = conn.prepareStatement(String.valueOf(sql));
+            PreparedStatement pstmt = conn.prepareStatement(sql.toString());
+            System.out.println(sql);
             pstmt.executeUpdate();
 
         } catch (IllegalAccessException e) {
@@ -231,7 +236,7 @@ public class ObjectRepo {
 
             // Finds and prepares to invoke the getter method for the field annotated with @Column and @Id
             field.setAccessible(true);
-            String sql = "delete from " + getTableName(oClass) + " where id = " + field.get(object);
+            String sql = "delete from " + getTableName(oClass) + " where " + getColumnName(field) + " = " + field.get(object);
             field.setAccessible(false);
 
             PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -274,27 +279,29 @@ public class ObjectRepo {
         return s.toString();
     }
 
-    private <T> T generateObject(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
-            switch (field.getType().getSimpleName()) {
-                case ("String"):
-                    field.set(object, rs.getString(dbID));
-                    break;
-                case ("int"):
-                case ("Integer"):
-                    field.set(object, rs.getInt(dbID));
-                    break;
-                case ("double"):
-                case ("Double"):
-                    field.set(object, rs.getDouble(dbID));
-                    break;
-                case ("float"):
-                case ("Float"):
-                    field.set(object, rs.getFloat(dbID));
-                    break;
-                case ("boolean"):
-                    field.set(object, rs.getBoolean(dbID));
-                    break;
-            }
+    private <T> T setObjectValues(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
+        field.setAccessible(true);
+        switch (field.getType().getSimpleName()) {
+            case ("String"):
+                field.set(object, rs.getString(dbID));
+                break;
+            case ("int"):
+            case ("Integer"):
+                field.set(object, rs.getInt(dbID));
+                break;
+            case ("double"):
+            case ("Double"):
+                field.set(object, rs.getDouble(dbID));
+                break;
+            case ("float"):
+            case ("Float"):
+                field.set(object, rs.getFloat(dbID));
+                break;
+            case ("boolean"):
+                field.set(object, rs.getBoolean(dbID));
+                break;
+        }
+        field.setAccessible(false);
         return object;
     }
 
