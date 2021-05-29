@@ -32,9 +32,10 @@ public class ObjectRepo {
             Field[] fields = Arrays.stream(oClass.getDeclaredFields())
                                    .filter(f -> f.isAnnotationPresent(Column.class) && !f.isAnnotationPresent(Id.class))
                                    .toArray(Field[]::new);
-            
+          
             StringBuilder sql = new StringBuilder("insert into " + getTableName(oClass) + " (");
             int i = 1;
+
             // Gets the column_name and appends it to the sql string for each field annotated with @Column
             for (Field field: fields) {
                 field.setAccessible(true);
@@ -81,7 +82,6 @@ public class ObjectRepo {
             System.out.println("Could not find @Id annotation in class");
             e.printStackTrace();
         }
-        
     }
     
     @SuppressWarnings({"unchecked"})
@@ -110,7 +110,7 @@ public class ObjectRepo {
             
             Statement pstmt = conn.createStatement();
             ResultSet rs = pstmt.executeQuery(sql.toString());
-            
+
             while(rs.next()) {
                 Constructor<?> objectConstructor = clazz.getConstructor();
                 T object = (T) Objects.requireNonNull(objectConstructor.newInstance());
@@ -118,7 +118,6 @@ public class ObjectRepo {
                     setObjectValues(rs, f, object, getColumnName(f));
                 }
                 objectList.add(object);
-                
             }
         } catch (NoSuchMethodException e) {
             System.out.println("Constructor does not exist!");
@@ -221,7 +220,7 @@ public class ObjectRepo {
             
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.executeUpdate();
-            
+
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
             e.printStackTrace();
@@ -258,7 +257,7 @@ public class ObjectRepo {
         }
         return s.toString();
     }
-    
+
     private <T> void setObjectValues(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
         field.setAccessible(true);
         switch (field.getType().getSimpleName()) {
@@ -282,132 +281,6 @@ public class ObjectRepo {
                 break;
         }
         field.setAccessible(false);
-        
-    }
-    
-    //WORKING update method!
-    
-    /**
-     * Method for being able to to update a entry using Id. In other words the DB that will be references
-     * must have Id column and POJO must also have a ID column.
-     *
-     * @param conn Connection to DB using JDBC.Please reference ConnectionFactory.
-     * @param o    Object with Entity anotation, else we throw RunTimeException
-     * @throws IllegalAccessException
-     * @throws SQLException
-     */
-    public void sqlUpdateQuery(Connection conn, Object o) throws IllegalAccessException, SQLException {
-        Class<?> oClass = Objects.requireNonNull(o.getClass());
-        
-        if (!oClass.isAnnotationPresent(Entity.class)) {
-            throw new RuntimeException("This is not an entity class!");
-        }
-        
-        
-        //Get name of entity, next we would check if entity(name) is empty, if so
-        //then we use name of class.
-        Entity anoEntity = oClass.getAnnotation(Entity.class);
-        String tableName = anoEntity.name();
-        
-        String sqlUpdater = "update " + "public." + tableName + " set ";//column = value
-        String fieldNames = "";
-        String fieldValue="";
-        String tmpIdName = "";
-        String tmpIdvalue ="";
-        //first loop through to prepare statement
-        //get the fields to be put into the sql statement
-        Field[] oClassFields = oClass.getDeclaredFields();
-        for (int i = 0; i < oClassFields.length; i++) {
-            Field field = oClassFields[i];
-            field.setAccessible(true);
-            if (field.isAnnotationPresent(Id.class)) {
-                Column cName = field.getAnnotation(Column.class);
-                tmpIdName = cName.name();
-                tmpIdvalue = field.get(o).toString();
-            } else if (field.get(o) instanceof Integer) {
-                
-                //System.out.println(values);
-                Column columnNames = field.getAnnotation(Column.class);
-                fieldNames = columnNames.name();
-                fieldValue = field.get(o).toString();
-                sqlUpdater += fieldNames + " = " + fieldValue +",";
-                
-            }else{
-                Column columnNames = field.getAnnotation(Column.class);
-                fieldNames = columnNames.name();
-                fieldValue = field.get(o).toString();
-                sqlUpdater += fieldNames + " = \'" + fieldValue +"\',";
-                
-            }
-            field.setAccessible(false);
-        }
-        sqlUpdater = sqlUpdater.substring(0, sqlUpdater.length() - 1);
-        sqlUpdater += " where " + tmpIdName + "= "+ tmpIdvalue;
-        System.out.println(sqlUpdater);
-        
-        PreparedStatement pstmt = conn.prepareStatement(sqlUpdater);
-        pstmt.executeUpdate();
-      /*  String values = "";
-        Integer tmpId = 0;
-        
-        for (int i = 1; i < oClassFields.length + 1; i++) {
-            Field field = oClassFields[i - 1];
-            field.setAccessible(true);
-            
-            if (field.get(o) instanceof Integer) {
-                if (field.isAnnotationPresent(Id.class)) {
-                    tmpId = (Integer) field.get(o);
-                } else {
-                    pstmt.setInt(i - 1, (Integer) field.get(o));
-                }
-            } else if (field.get(o) instanceof String) {
-                pstmt.setString(i - 1, (String) field.get(o));
-            }
-            field.setAccessible(false);
-        }
-        //pstmt.setInt(oClassFields.length, tmpId);
-       // pstmt.executeUpdate();
-        */
-    }
-    
-    
-    /**
-     * Method for deleting an entity type that references an entry in a DB using the Id column from
-     * the application onto id from DB.
-     * @param conn      Connection to DB using JDBC, please references ConnectionFactory for mor information
-     * @param o         Object that will be that matches data base entry.
-     * @throws IllegalAccessException
-     * @throws SQLException
-     */
-    public void sqlDelete(Connection conn, Object o) throws IllegalAccessException, SQLException {
-        Class<?> oClass = Objects.requireNonNull(o.getClass());
-        
-        if (!oClass.isAnnotationPresent(Entity.class)) {
-            throw new RuntimeException("Not an Entity type.");
-        }
-        
-        //get name of table which is in entity name or if empty use class name
-        Entity anoEntity = oClass.getAnnotation(Entity.class);
-        String tableName = anoEntity.name();
-        Integer intId = 0;
-        String sql = "delete from " + tableName + " where ";
-        Field[] oClassFields = oClass.getDeclaredFields();
-        for (Field field : oClassFields) {
-            field.setAccessible(true);
-            
-            if (field.isAnnotationPresent(Id.class)) {
-                Column cn = field.getAnnotation(Column.class);
-                sql += cn.name() + " = (?)";
-                intId = (Integer)field.get(o);
-            }
-        }
-        System.out.println(sql);
-        
-        PreparedStatement pstmt = conn.prepareStatement(sql);
-        
-        pstmt.setInt(1,intId);
-        pstmt.executeUpdate();
-        
     }
     
     /**
