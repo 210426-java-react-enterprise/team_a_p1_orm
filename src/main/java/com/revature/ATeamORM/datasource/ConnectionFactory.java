@@ -1,15 +1,12 @@
-package com.revature.ATeamORM.util.datasource;
+package com.revature.ATeamORM.datasource;
 
 import com.revature.ATeamORM.exceptions.DataSourceException;
-import com.revature.ATeamORM.util.annotations.JDBCConnection;
+import com.revature.ATeamORM.annotations.JDBCConnection;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * Tries to set up a connection factory

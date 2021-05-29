@@ -1,14 +1,11 @@
-package com.revature.ATeamORM.models;
+import com.revature.ATeamORM.annotations.*;
 
-import com.revature.ATeamORM.util.annotations.Column;
-import com.revature.ATeamORM.util.annotations.Entity;
-import com.revature.ATeamORM.util.annotations.Id;
-
-@Entity(name = "appusers")
+@Entity(name = "users")
+@Table(name = "users")
 public class AppUser {
 
     @Id
-    @Column(name = "id")
+    @Column(name = "user_id")
     private int id;
 
     @Column(name = "username")
@@ -17,13 +14,17 @@ public class AppUser {
     @Column(name = "password")
     private String password;
 
+    @Column(name = "email")
+    private String email;
+
     public AppUser() {
         super();
     }
 
-    public AppUser(String username, String password) {
+    public AppUser(String username, String password, String email) {
         this.username = username;
         this.password = password;
+        this.email = email;
     }
 
     public int getId() {
@@ -50,12 +51,20 @@ public class AppUser {
         this.password = password;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail (String email) {
+        this.email = email;
+    }
     @Override
     public String toString() {
         return "AppUser{" +
                 "id=" + id +
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
+                ", email='" + email + '\'' +
                 '}';
     }
 }
