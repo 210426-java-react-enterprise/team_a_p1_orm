@@ -3,7 +3,7 @@ import com.revature.ATeamORM.annotations.JDBCConnection;
 
 import java.sql.SQLException;
 
-@JDBCConnection(url = "java-react-enterprise-210426.cxg4xfp9ig7t.us-east-1.rds.amazonaws.com", username = "postgresAdmin", password = "r3vature&Uros", schema = "p0")
+@JDBCConnection(url = "", username = "", password = "", schema = "")
 public class testDriver {
 
 	public static void main(String[] args) {
