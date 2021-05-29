@@ -431,15 +431,15 @@ public class ObjectRepo {
         String sql = "select * from "+ tableName+ " where ";
         
         //get the id for look up
-        String idName = "";
+        
         String value = "";
-        Integer idInteger = 0;
+        
         Field[] oClassFields = oClass.getDeclaredFields();
         
         for(Field field : oClassFields){
             field.setAccessible(true);
             Column cn = field.getAnnotation(Column.class);
-            if(cn.unique()){
+            if(cn.unique() && field.get(o)!=null){
                 value = field.get(o).toString();
                 sql+=cn.name() +"=\'"+ value+"\'and ";
             }
