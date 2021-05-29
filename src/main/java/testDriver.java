@@ -5,6 +5,7 @@ import com.revature.ATeamORM.annotations.JDBCConnection;
 import java.sql.SQLException;
 
 
+@JDBCConnection(url = "", username = "", password = "", schema = "")
 
 public class testDriver {
 
