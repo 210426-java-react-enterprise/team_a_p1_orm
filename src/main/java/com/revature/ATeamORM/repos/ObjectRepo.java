@@ -1,162 +1,309 @@
 package com.revature.ATeamORM.repos;
 
-import com.revature.ATeamORM.exceptions.DataSourceException;
+import com.revature.ATeamORM.annotations.Column;
+import com.revature.ATeamORM.annotations.Id;
+import com.revature.ATeamORM.annotations.Table;
+import com.revature.ATeamORM.datasource.Result;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Map;
+import com.revature.ATeamORM.annotations.Entity;
+import java.sql.*;
+import java.util.*;
 
 public class ObjectRepo {
 
-    public void create(Connection conn, Object object, String tableName, Map<String, String> columns) {
+    public void create(Connection conn, Object object) throws SQLException {
 
         try{
+            Class<?> oClass = Objects.requireNonNull(object.getClass());
 
-            Class theClass = object.getClass();
-            Method method = theClass.getMethod("setId",Integer.class);
+            // All classes passed in must be annotated with @Entity
+            if (!oClass.isAnnotationPresent(Entity.class)) {
+                throw new RuntimeException("This is not an entity class!");
+            }
 
-            StringBuilder sql = new StringBuilder("insert into " + tableName + " (");
+            // Filters through fields in class for ones annotated with @Column but without the @Id annotation
+            Field[] fields = Arrays.stream(oClass.getDeclaredFields())
+                                   .filter(f -> f.isAnnotationPresent(Column.class) && !f.isAnnotationPresent(Id.class))
+                                   .toArray(Field[]::new);
+            StringBuilder sql = new StringBuilder("insert into " + getTableName(oClass) + " (");
             int i = 1;
-            for (String column: columns.keySet()) {
-                sql.append(column);
-                if (i < columns.size()) {
+
+            // Gets the column_name and appends it to the sql string for each field annotated with @Column
+            for (Field field: fields) {
+                field.setAccessible(true);
+                sql.append(getColumnName(field));
+                if (i < fields.length) {
                     sql.append(", ");
                 }
+                field.setAccessible(false);
                 i++;
             }
             sql.append(") values (");
             i = 1;
-            for (String value: columns.values()) {
-                sql.append(value);
-                i++;
-                if (i < columns.size()) {
+
+            // Goes through each @Column annotated field in class and appends sql string with the value of the field
+            for (Field field: fields) {
+                field.setAccessible(true);
+                sql.append(encapsulateString(field.get(object)));
+                if (i < fields.length) {
                     sql.append(", ");
                 }
+                field.setAccessible(false);
+                i++;
             }
             sql.append(")");
 
-            PreparedStatement pstmt = conn.prepareStatement(String.valueOf(sql), new String[] { "id" });
-            int rowsInserted = pstmt.executeUpdate();
-
-            if (rowsInserted != 0) {
+            Field field = Arrays.stream(oClass.getDeclaredFields()).filter(f -> f.isAnnotationPresent(Id.class)).findFirst().get();
+            field.setAccessible(true);
+            String fieldId = getColumnName(field);
+            field.setAccessible(false);
+            // Puts sql string into a prepared statement, executes it, retrieves the id, then inserts new id back into object
+            PreparedStatement pstmt = conn.prepareStatement(sql.toString(), new String[] { fieldId });
+            if (pstmt.executeUpdate() != 0) {
                 ResultSet rs = pstmt.getGeneratedKeys();
                 while (rs.next()) {
-                    method.invoke(object,rs.getInt("id"));
+                    field.setAccessible(true);
+                    setObjectValues(rs, field, object, fieldId);
+                    field.setAccessible(false);
                 }
             }
-
-        } catch (SQLException e) {
-            throw new DataSourceException();
-        } catch (InvocationTargetException e) {
-            System.out.println("Cannot invoke method");
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
-        } catch (NoSuchMethodException e) {
-            System.out.println("No such method exists");
+            e.printStackTrace();
+        } catch (NoSuchElementException e) {
+            System.out.println("Could not find @Id annotation in class");
+            e.printStackTrace();
         }
-
     }
 
-    public ResultSet read(Connection conn, String table, Map<String, String> columns) {
+    @SuppressWarnings({"unchecked"})
+    public <T> Result<T> read(Connection conn, Class<T> clazz, String fieldName, String fieldValue) throws SQLException {
 
-        ResultSet rs = null;
+        List<T> objectList = new ArrayList<>();
+
+        // All classes passed in must be annotated with @Entity
+        if (!clazz.isAnnotationPresent(Entity.class)) {
+            throw new RuntimeException("This is not an entity class!");
+        }
+
+        // Filters through fields in class for ones annotated with @Column
+        Field[] fields = Arrays.stream(clazz.getDeclaredFields())
+                .filter(f -> f.isAnnotationPresent(Column.class))
+                .toArray(Field[]::new);
+
+        StringBuilder sql = new StringBuilder("select * from ").append(getTableName(clazz))
+                                                               .append(" where ");
 
         try {
+            Field field = clazz.getDeclaredField(fieldName);
+            Object value;
+            switch (field.getType().getSimpleName()) {
+                case ("String"):
+                    value = (String) fieldValue;
+                    break;
+                case ("int"):
+                case ("Integer"):
+                    value = Integer.parseInt(fieldValue);
+                    break;
+                case ("double"):
+                case ("Double"):
+                    value = Double.parseDouble(fieldValue);
+                    break;
+                case ("float"):
+                case ("Float"):
+                    value = Float.parseFloat(fieldValue);
+                    break;
+                case ("boolean"):
+                    value = Boolean.parseBoolean(fieldValue);
+                    break;
+            }
+            sql.append(getColumnName(field))
+               .append(" = ")
+               .append(encapsulateString(fieldValue));
 
-            StringBuilder sql = new StringBuilder("select * from " + table + " where ");
-            int i = 1;
-            for (String column: columns.keySet()) {
-                sql.append(column + " = " + columns.get(column));
-                if (i < columns.size()) {
-                    sql.append(" and ");
+            Statement pstmt = conn.createStatement();
+            ResultSet rs = pstmt.executeQuery(sql.toString());
+
+            Constructor<?> objectConstructor = clazz.getConstructor();
+            while(rs.next()) {
+                T object = (T) Objects.requireNonNull(objectConstructor.newInstance());
+                for (Field f : fields) {
+                    setObjectValues(rs, f, object, getColumnName(f));
                 }
-                i++;
+                objectList.add(object);
+
             }
-
-            if(conn == null) {
-                throw new NullPointerException(System.getProperty("host_url") +
-                        " is what has been given as the host url from environment variables \n and the username is: "+
-                        System.getProperty("db_username") + " with a password of: "+System.getProperty("db_password"));
-            }
-
-            PreparedStatement pstmt = conn.prepareStatement(String.valueOf(sql));
-
-            rs = pstmt.executeQuery();
-
-        } catch (SQLException e) {
-            throw new DataSourceException();
+        } catch (NoSuchMethodException e) {
+            System.out.println("Constructor does not exist!");
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            System.out.println("Cannot invoke constructor!");
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            System.out.println("Cannot instantiate object!");
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            System.out.println("Constructor is not public!");
+            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            System.out.println("Could not find {fieldName} in your {Class<?>}!");
+            e.printStackTrace();
         }
 
-        return rs;
-
+        return new Result<>(objectList);
     }
 
-    public void update(Connection conn, Object object, String table, Map<String, String> columns) {
+    public void update(Connection conn, Object object) throws SQLException {
 
         try {
+            Class<?> oClass = Objects.requireNonNull(object.getClass());
 
-            Class theClass = object.getClass();
-            Method method = theClass.getMethod("getId",Integer.class);
-            Method otherMethod = theClass.getMethod("setId",Integer.class);
+            // All classes passed in must be annotated with @Entity
+            if (!oClass.isAnnotationPresent(Entity.class)) {
+                throw new RuntimeException("This is not an entity class!");
+            }
 
-            StringBuilder sql = new StringBuilder("update "  + table + " set ");
+            // Filters through fields in class for ones annotated with @Column
+            Field[] fields = Arrays.stream(oClass.getDeclaredFields())
+                                   .filter(f -> f.isAnnotationPresent(Column.class))
+                                   .toArray(Field[]::new);
+
+            // Used to create a camelCase string for the getter method that will be invoked
+            StringBuilder sql = new StringBuilder("update "  + getTableName(oClass) + " set ");
             int i = 1;
-            for (String column: columns.keySet()) {
-                sql.append(column + " = " + columns.get(column));
-                if (i < columns.size()) {
+
+            // Goes through each @Column annotated field in class and appends sql string with "column_name = fieldValue,"
+            for (Field field: fields) {
+                field.setAccessible(true);
+                sql.append(getColumnName(field))
+                   .append(" = ")
+                   .append(encapsulateString(field.get(object)));
+                if (i < fields.length) {
                     sql.append(", ");
                 }
+                field.setAccessible(false);
+                i++;
             }
-            sql.append(" where id = " + method.invoke(object));
+            sql.append(" where ");
 
-            PreparedStatement pstmt = conn.prepareStatement(String.valueOf(sql));
-
-            int rowsUpdated = pstmt.executeUpdate();
-
-            if (rowsUpdated != 0) {
-                ResultSet rs = pstmt.getGeneratedKeys();
-                while (rs.next()) {
-                    otherMethod.invoke(object, rs.getInt("id"));
+            String idName = "";
+            // Finds the field annotated with @Id and gets its field name to build a query of "where id_name = id"
+            for (Field field : fields) {
+                field.setAccessible(true);
+                if (field.isAnnotationPresent(Id.class)) {
+                    sql.append(getColumnName(field))
+                       .append(" = ")
+                       .append(field.get(object));
+                    break;
                 }
+                field.setAccessible(false);
             }
 
-        } catch (NoSuchMethodException e) {
-            System.out.println("No such method exists");
-        } catch (InvocationTargetException e) {
-            System.out.println("Cannot invoke that method");
+            // Loads sql string into a PreparedStatement and executes it, updating the database
+            // Final sql string will look something like this:
+            // update tableName set user_id = object.id, username = object.username, password = object.password where user_id = object.id
+            PreparedStatement pstmt = conn.prepareStatement(sql.toString());
+            System.out.println(sql);
+            pstmt.executeUpdate();
+
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
-        } catch (SQLException e) {
-            throw new DataSourceException();
+            e.printStackTrace();
         }
     }
 
-    public void delete(Connection conn, Object object, String table) {
+    public void delete(Connection conn, Object object) throws SQLException {
 
         try {
+            Class<?> oClass = Objects.requireNonNull(object.getClass());
 
-            Class theClass = object.getClass();
-            Method method = theClass.getMethod("getId",Integer.class);
+            // All classes passed in must be annotated with @Entity
+            if (!oClass.isAnnotationPresent(Entity.class)) {
+                throw new RuntimeException("This is not an entity class!");
+            }
 
-            String sql = "delete from " + table + " where id = " + method.invoke(object);
+            // Filters through fields in class for one annotated with @Column and @Id (there should only be one)
+            Field field = Arrays.stream(oClass.getDeclaredFields())
+                                .filter(f -> f.isAnnotationPresent(Column.class) && f.isAnnotationPresent(Id.class))
+                                .findFirst().get();
+
+            // Finds and prepares to invoke the getter method for the field annotated with @Column and @Id
+            field.setAccessible(true);
+            String sql = "delete from " + getTableName(oClass) + " where " + getColumnName(field) + " = " + field.get(object);
+            field.setAccessible(false);
 
             PreparedStatement pstmt = conn.prepareStatement(sql);
-
-            int rowsUpdated = pstmt.executeUpdate();
-
-        } catch (NoSuchMethodException e) {
-            System.out.println("No such method exists");
-        } catch (InvocationTargetException e) {
-            System.out.println("Cannot invoke that method");
+            pstmt.executeUpdate();
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
-        } catch (SQLException e) {
-            throw new DataSourceException();
+            e.printStackTrace();
+        } catch (NoSuchElementException e) {
+            System.out.println("Missing @Id annotation");
+            e.printStackTrace();
         }
+    }
+
+    private String getTableName(Class<?> clazz) {
+        String tableName = clazz.getAnnotation(Table.class).name();
+        if (tableName.equals("")) {
+            tableName = clazz.getName();
+        }
+        return tableName;
+    }
+
+    private String getColumnName(Field field) {
+        String columnName = field.getAnnotation(Column.class).name();
+        if (columnName.equals("")) {
+            columnName = field.getName();
+        }
+        return columnName;
+    }
+
+    private <T> String encapsulateString (T t) {
+        StringBuilder s = new StringBuilder();
+        if (t.getClass().getSimpleName().equals("String")) {
+            s.append("\'")
+             .append(t)
+             .append("\'");
+        } else {
+            s.append(t);
+        }
+        return s.toString();
+    }
+
+    private <T> void setObjectValues(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
+        field.setAccessible(true);
+        switch (field.getType().getSimpleName()) {
+            case ("String"):
+                field.set(object, rs.getString(dbID));
+                break;
+            case ("int"):
+            case ("Integer"):
+                field.set(object, rs.getInt(dbID));
+                break;
+            case ("double"):
+            case ("Double"):
+                field.set(object, rs.getDouble(dbID));
+                break;
+            case ("float"):
+            case ("Float"):
+                field.set(object, rs.getFloat(dbID));
+                break;
+            case ("boolean"):
+                field.set(object, rs.getBoolean(dbID));
+                break;
+        }
+        field.setAccessible(false);
     }
 
 }
+
+
+

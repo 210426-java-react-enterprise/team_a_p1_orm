@@ -1,4 +1,4 @@
-package com.revature.ATeamORM.util.annotations;
+package com.revature.ATeamORM.annotations;
 
 import java.lang.annotation.*;
 
