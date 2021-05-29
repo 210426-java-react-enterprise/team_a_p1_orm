@@ -1,13 +1,17 @@
+
 import com.revature.ATeamORM.datasource.Session;
 import com.revature.ATeamORM.annotations.JDBCConnection;
 
 import java.sql.SQLException;
 
+
 @JDBCConnection(url = "", username = "", password = "", schema = "")
+
 public class testDriver {
 
 	public static void main(String[] args) {
-		try {
+
+		/*try {
 			AppUser testUser = new AppUser();
 			testUser.setUsername("test1");
 			testUser.setPassword("password");
@@ -34,6 +38,7 @@ public class testDriver {
 
 		} catch (SQLException e) {
 			e.printStackTrace();
-		}
+		}*/
+
 	}
 }

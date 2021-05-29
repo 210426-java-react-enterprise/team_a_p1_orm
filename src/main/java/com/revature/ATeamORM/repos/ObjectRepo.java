@@ -17,21 +17,22 @@ import java.sql.*;
 import java.util.*;
 
 public class ObjectRepo {
-
+    
     public void create(Connection conn, Object object) throws SQLException {
-
+        
         try{
             Class<?> oClass = Objects.requireNonNull(object.getClass());
-
+            
             // All classes passed in must be annotated with @Entity
             if (!oClass.isAnnotationPresent(Entity.class)) {
                 throw new RuntimeException("This is not an entity class!");
             }
-
+            
             // Filters through fields in class for ones annotated with @Column but without the @Id annotation
             Field[] fields = Arrays.stream(oClass.getDeclaredFields())
                                    .filter(f -> f.isAnnotationPresent(Column.class) && !f.isAnnotationPresent(Id.class))
                                    .toArray(Field[]::new);
+          
             StringBuilder sql = new StringBuilder("insert into " + getTableName(oClass) + " (");
             int i = 1;
 
@@ -47,7 +48,7 @@ public class ObjectRepo {
             }
             sql.append(") values (");
             i = 1;
-
+            
             // Goes through each @Column annotated field in class and appends sql string with the value of the field
             for (Field field: fields) {
                 field.setAccessible(true);
@@ -59,7 +60,7 @@ public class ObjectRepo {
                 i++;
             }
             sql.append(")");
-
+            
             Field field = Arrays.stream(oClass.getDeclaredFields()).filter(f -> f.isAnnotationPresent(Id.class)).findFirst().get();
             field.setAccessible(true);
             String fieldId = getColumnName(field);
@@ -82,31 +83,31 @@ public class ObjectRepo {
             e.printStackTrace();
         }
     }
-
+    
     @SuppressWarnings({"unchecked"})
     public <T> Result<T> read(Connection conn, Class<T> clazz, String fieldName, String fieldValue) throws SQLException {
-
+        
         List<T> objectList = new ArrayList<>();
-
+        
         // All classes passed in must be annotated with @Entity
         if (!clazz.isAnnotationPresent(Entity.class)) {
             throw new RuntimeException("This is not an entity class!");
         }
-
+        
         // Filters through fields in class for ones annotated with @Column
         Field[] fields = Arrays.stream(clazz.getDeclaredFields())
-                .filter(f -> f.isAnnotationPresent(Column.class))
-                .toArray(Field[]::new);
-
+                               .filter(f -> f.isAnnotationPresent(Column.class))
+                               .toArray(Field[]::new);
+        
         StringBuilder sql = new StringBuilder("select * from ").append(getTableName(clazz))
                                                                .append(" where ");
-
+        
         try {
             Field field = clazz.getDeclaredField(fieldName);
             sql.append(getColumnName(field))
                .append(" = ")
                .append(encapsulateString(fieldValue));
-
+            
             Statement pstmt = conn.createStatement();
             ResultSet rs = pstmt.executeQuery(sql.toString());
 
@@ -117,7 +118,6 @@ public class ObjectRepo {
                     setObjectValues(rs, f, object, getColumnName(f));
                 }
                 objectList.add(object);
-
             }
         } catch (NoSuchMethodException e) {
             System.out.println("Constructor does not exist!");
@@ -135,29 +135,29 @@ public class ObjectRepo {
             System.out.println("Could not find {fieldName} in your {Class<?>}!");
             e.printStackTrace();
         }
-
+        
         return new Result<>(objectList);
     }
-
+    
     public void update(Connection conn, Object object) throws SQLException {
-
+        
         try {
             Class<?> oClass = Objects.requireNonNull(object.getClass());
-
+            
             // All classes passed in must be annotated with @Entity
             if (!oClass.isAnnotationPresent(Entity.class)) {
                 throw new RuntimeException("This is not an entity class!");
             }
-
+            
             // Filters through fields in class for ones annotated with @Column
             Field[] fields = Arrays.stream(oClass.getDeclaredFields())
                                    .filter(f -> f.isAnnotationPresent(Column.class))
                                    .toArray(Field[]::new);
-
+            
             // Used to create a camelCase string for the getter method that will be invoked
             StringBuilder sql = new StringBuilder("update "  + getTableName(oClass) + " set ");
             int i = 1;
-
+            
             // Goes through each @Column annotated field in class and appends sql string with "column_name = fieldValue,"
             for (Field field: fields) {
                 field.setAccessible(true);
@@ -171,7 +171,7 @@ public class ObjectRepo {
                 i++;
             }
             sql.append(" where ");
-
+            
             String idName = "";
             // Finds the field annotated with @Id and gets its field name to build a query of "where id_name = id"
             for (Field field : fields) {
@@ -184,42 +184,43 @@ public class ObjectRepo {
                 }
                 field.setAccessible(false);
             }
-
+            
             // Loads sql string into a PreparedStatement and executes it, updating the database
             // Final sql string will look something like this:
             // update tableName set user_id = object.id, username = object.username, password = object.password where user_id = object.id
             PreparedStatement pstmt = conn.prepareStatement(sql.toString());
             System.out.println(sql);
             pstmt.executeUpdate();
-
+            
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
             e.printStackTrace();
         }
     }
-
+    
     public void delete(Connection conn, Object object) throws SQLException {
-
+        
         try {
             Class<?> oClass = Objects.requireNonNull(object.getClass());
-
+            
             // All classes passed in must be annotated with @Entity
             if (!oClass.isAnnotationPresent(Entity.class)) {
                 throw new RuntimeException("This is not an entity class!");
             }
-
+            
             // Filters through fields in class for one annotated with @Column and @Id (there should only be one)
             Field field = Arrays.stream(oClass.getDeclaredFields())
                                 .filter(f -> f.isAnnotationPresent(Column.class) && f.isAnnotationPresent(Id.class))
                                 .findFirst().get();
-
+            
             // Finds and prepares to invoke the getter method for the field annotated with @Column and @Id
             field.setAccessible(true);
             String sql = "delete from " + getTableName(oClass) + " where " + getColumnName(field) + " = " + field.get(object);
             field.setAccessible(false);
-
+            
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.executeUpdate();
+
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
             e.printStackTrace();
@@ -228,7 +229,7 @@ public class ObjectRepo {
             e.printStackTrace();
         }
     }
-
+    
     private String getTableName(Class<?> clazz) {
         String tableName = clazz.getAnnotation(Table.class).name();
         if (tableName.equals("")) {
@@ -236,7 +237,7 @@ public class ObjectRepo {
         }
         return tableName;
     }
-
+    
     private String getColumnName(Field field) {
         String columnName = field.getAnnotation(Column.class).name();
         if (columnName.equals("")) {
@@ -244,7 +245,7 @@ public class ObjectRepo {
         }
         return columnName;
     }
-
+    
     private <T> String encapsulateString (T t) {
         StringBuilder s = new StringBuilder();
         if (t.getClass().getSimpleName().equals("String")) {
@@ -281,8 +282,48 @@ public class ObjectRepo {
         }
         field.setAccessible(false);
     }
-
+    
+    /**
+     * Method to determine if the unique provided columns are not in the database.
+     * @param conn
+     * @param o
+     * @return
+     * @throws SQLException
+     * @throws IllegalAccessException
+     */
+    @SuppressWarnings({"unchecked"})
+    public Boolean isEntryUnique(Connection conn, Object o) throws SQLException, IllegalAccessException {
+        Class<?> oClass = Objects.requireNonNull(o.getClass());
+        
+        if(!oClass.isAnnotationPresent(Entity.class)){
+            throw new RuntimeException("Not an Entity type.");
+        }
+        //sql statement to be prepared
+        Entity anoEntity = oClass.getAnnotation(Entity.class);
+        String tableName = anoEntity.name();
+        String sql = "select * from "+ tableName+ " where ";
+        
+        //get the id for look up
+        String idName = "";
+        String value = "";
+        Integer idInteger = 0;
+        Field[] oClassFields = oClass.getDeclaredFields();
+        
+        for(Field field : oClassFields){
+            field.setAccessible(true);
+            Column cn = field.getAnnotation(Column.class);
+            if(cn.unique()){
+                value = field.get(o).toString();
+                sql+=cn.name() +"=\'"+ value+"\'and ";
+            }
+            
+            field.setAccessible(false);
+        }
+        String newSql = sql.substring(0,sql.length()-4);
+        System.out.println(newSql);
+        PreparedStatement pstmt = conn.prepareStatement(newSql);
+        ResultSet rs = pstmt.executeQuery();
+        return !rs.next();
+    }
+    
 }
-
-
-
