@@ -104,27 +104,6 @@ public class ObjectRepo {
         
         try {
             Field field = clazz.getDeclaredField(fieldName);
-            Object value;
-            switch (field.getType().getSimpleName()) {
-                case ("String"):
-                    value = (String) fieldValue;
-                    break;
-                case ("int"):
-                case ("Integer"):
-                    value = Integer.parseInt(fieldValue);
-                    break;
-                case ("double"):
-                case ("Double"):
-                    value = Double.parseDouble(fieldValue);
-                    break;
-                case ("float"):
-                case ("Float"):
-                    value = Float.parseFloat(fieldValue);
-                    break;
-                case ("boolean"):
-                    value = Boolean.parseBoolean(fieldValue);
-                    break;
-            }
             sql.append(getColumnName(field))
                .append(" = ")
                .append(encapsulateString(fieldValue));
@@ -132,12 +111,13 @@ public class ObjectRepo {
             Statement pstmt = conn.createStatement();
             ResultSet rs = pstmt.executeQuery(sql.toString());
             
-            Constructor<?> objectConstructor = clazz.getConstructor();
             while(rs.next()) {
+                Constructor<?> objectConstructor = clazz.getConstructor();
                 T object = (T) Objects.requireNonNull(objectConstructor.newInstance());
                 for (Field f : fields) {
-                    objectList.add(setObjectValues(rs, f, object, getColumnName(f)));
+                    setObjectValues(rs, f, object, getColumnName(f));
                 }
+                objectList.add(object);
                 
             }
         } catch (NoSuchMethodException e) {
@@ -279,7 +259,7 @@ public class ObjectRepo {
         return s.toString();
     }
     
-    private <T> T setObjectValues(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
+    private <T> void setObjectValues(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
         field.setAccessible(true);
         switch (field.getType().getSimpleName()) {
             case ("String"):
@@ -302,7 +282,7 @@ public class ObjectRepo {
                 break;
         }
         field.setAccessible(false);
-        return object;
+        
     }
     
     //WORKING update method!
@@ -472,40 +452,5 @@ public class ObjectRepo {
         ResultSet rs = pstmt.executeQuery();
         return !rs.next();
     }
-    @SuppressWarnings({"unchecked"})
-    public ResultSet sqlSelect(Connection conn, Object o) throws SQLException, IllegalAccessException {
-        Class<?> oClass = Objects.requireNonNull(o.getClass());
-        
-        if(!oClass.isAnnotationPresent(Entity.class)){
-            throw new RuntimeException("Not an Entity type.");
-        }
-        //sql statement to be prepared
-        Entity anoEntity = oClass.getAnnotation(Entity.class);
-        String tableName = anoEntity.name();
-        String sql = "select * from "+ tableName+ " where ";
-        
-        //get the id for look up
-        String idName = "";
-        Integer idInteger = 0;
-        Field[] oClassFields = oClass.getDeclaredFields();
-        
-        for(Field field : oClassFields){
-            field.setAccessible(true);
-            
-            if(field.isAnnotationPresent(Id.class)){
-                Column cn = field.getAnnotation(Column.class);
-                sql += cn.name()+ "=(?)";
-                idInteger = (Integer) field.get(o);
-            }
-            field.setAccessible(false);
-        }
-        
-        System.out.println(sql);
-        PreparedStatement pstmt = conn.prepareStatement(sql);
-        pstmt.setInt(1,idInteger);
-        return pstmt.executeQuery();
-    }
-    
-    
     
 }
