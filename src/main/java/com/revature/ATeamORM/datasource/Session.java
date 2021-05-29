@@ -1,4 +1,4 @@
-package com.revature.ATeamORM.util.datasource;
+package com.revature.ATeamORM.datasource;
 
 
 import com.revature.ATeamORM.exceptions.DataSourceException;
@@ -6,7 +6,6 @@ import com.revature.ATeamORM.repos.ObjectRepo;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.List;
 
 public class Session {
 
@@ -18,9 +17,8 @@ public class Session {
 		repo = new ObjectRepo();
 	}
 
-	public <T> List<T> find(Class<?> clazz, String fieldName, T fieldValue) {
-		// return repo.read(connection, clazz, fieldName, fieldValue);
-		return null;
+	public <T> Result<T> find(Class<T> clazz, String fieldName, String fieldValue) throws SQLException {
+		return repo.read(connection, clazz, fieldName, fieldValue);
 	}
 
 	public void save(Object object) throws SQLException {
