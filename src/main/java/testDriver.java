@@ -1,12 +1,12 @@
 
+import com.revature.ATeamORM.annotations.ConnectionConfig;
 import com.revature.ATeamORM.datasource.Session;
 import com.revature.ATeamORM.annotations.JDBCConnection;
 
 import java.sql.SQLException;
 
-
+@ConnectionConfig(filepath = "com.revature.ATeamORM.*")
 @JDBCConnection(url = "", username = "", password = "", schema = "")
-
 public class testDriver {
 
 	public static void main(String[] args) {

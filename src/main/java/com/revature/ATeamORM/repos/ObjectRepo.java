@@ -138,6 +138,11 @@ public class ObjectRepo {
         
         return new Result<>(objectList);
     }
+
+    public <T> Result<T> read(Connection conn, Class<T> clazz) {
+        List<T> list = new ArrayList<>();
+        return new Result<>(list);
+    }
     
     public void update(Connection conn, Object object) throws SQLException {
         
@@ -291,17 +296,15 @@ public class ObjectRepo {
      * @throws SQLException
      * @throws IllegalAccessException
      */
-    @SuppressWarnings({"unchecked"})
     public Boolean isEntryUnique(Connection conn, Object o) throws SQLException, IllegalAccessException {
         Class<?> oClass = Objects.requireNonNull(o.getClass());
         
         if(!oClass.isAnnotationPresent(Entity.class)){
             throw new RuntimeException("Not an Entity type.");
         }
+
         //sql statement to be prepared
-        Entity anoEntity = oClass.getAnnotation(Entity.class);
-        String tableName = anoEntity.name();
-        String sql = "select * from "+ tableName+ " where ";
+        StringBuilder sql = new StringBuilder("select * from " + getTableName(oClass) + " where ");
         
         //get the id for look up
         String idName = "";
@@ -312,9 +315,10 @@ public class ObjectRepo {
         for(Field field : oClassFields){
             field.setAccessible(true);
             Column cn = field.getAnnotation(Column.class);
-            if(cn.unique()){
-                value = field.get(o).toString();
-                sql+=cn.name() +"=\'"+ value+"\'and ";
+            if(cn.unique() && field.get(o) != null){
+                value = encapsulateString(field.get(o));
+                String s = cn.name() + " = "+ value + " and ";
+                sql.append(s);
             }
             
             field.setAccessible(false);

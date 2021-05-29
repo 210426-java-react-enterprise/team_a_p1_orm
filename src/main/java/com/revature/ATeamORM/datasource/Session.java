@@ -7,13 +7,14 @@ import com.revature.ATeamORM.repos.ObjectRepo;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class Session {
+public class Session implements AutoCloseable {
 
 	private Connection connection;
-	private ObjectRepo repo;
+	private final ObjectRepo repo;
+	private final Class<?> clazz;
 
-	public Session(Class<?> clazz) throws SQLException, DataSourceException {
-		connection = ConnectionFactory.getInstance().getConnection(clazz);
+	public Session(Class<?> clazz) throws DataSourceException {
+		this.clazz = clazz;
 		repo = new ObjectRepo();
 	}
 
@@ -31,6 +32,15 @@ public class Session {
 
 	public void remove(Object object) throws SQLException {
 		repo.delete(connection, object);
+	}
+
+	public void open() throws SQLException {
+		connection = ConnectionFactory.getInstance().getConnection(clazz);
+	}
+
+	@Override
+	public void close() throws SQLException {
+		connection.close();
 	}
 
 }

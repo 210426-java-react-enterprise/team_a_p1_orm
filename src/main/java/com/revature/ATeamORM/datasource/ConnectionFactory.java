@@ -86,7 +86,7 @@ public class ConnectionFactory {
 	}
 
 	/**
-	 * Injects database and host details into the url
+	 * Injects database and host details into the url; currently only implements postgres syntax
 	 * @param url The url of the database
 	 * @return The modified url that includes language specific identifiers
 	 * @author Uros Vorkapic
