@@ -12,7 +12,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+
 import com.revature.ATeamORM.annotations.Entity;
+
 import java.sql.*;
 import java.util.*;
 
@@ -20,7 +22,7 @@ public class ObjectRepo {
     
     public void create(Connection conn, Object object) throws SQLException {
         
-        try{
+        try {
             Class<?> oClass = Objects.requireNonNull(object.getClass());
             
             // All classes passed in must be annotated with @Entity
@@ -32,12 +34,12 @@ public class ObjectRepo {
             Field[] fields = Arrays.stream(oClass.getDeclaredFields())
                                    .filter(f -> f.isAnnotationPresent(Column.class) && !f.isAnnotationPresent(Id.class))
                                    .toArray(Field[]::new);
-          
+            
             StringBuilder sql = new StringBuilder("insert into " + getTableName(oClass) + " (");
             int i = 1;
-
+            
             // Gets the column_name and appends it to the sql string for each field annotated with @Column
-            for (Field field: fields) {
+            for (Field field : fields) {
                 field.setAccessible(true);
                 sql.append(getColumnName(field));
                 if (i < fields.length) {
@@ -50,7 +52,7 @@ public class ObjectRepo {
             i = 1;
             
             // Goes through each @Column annotated field in class and appends sql string with the value of the field
-            for (Field field: fields) {
+            for (Field field : fields) {
                 field.setAccessible(true);
                 sql.append(encapsulateString(field.get(object)));
                 if (i < fields.length) {
@@ -61,12 +63,15 @@ public class ObjectRepo {
             }
             sql.append(")");
             
-            Field field = Arrays.stream(oClass.getDeclaredFields()).filter(f -> f.isAnnotationPresent(Id.class)).findFirst().get();
+            Field field = Arrays.stream(oClass.getDeclaredFields())
+                                .filter(f -> f.isAnnotationPresent(Id.class))
+                                .findFirst()
+                                .get();
             field.setAccessible(true);
             String fieldId = getColumnName(field);
             field.setAccessible(false);
             // Puts sql string into a prepared statement, executes it, retrieves the id, then inserts new id back into object
-            PreparedStatement pstmt = conn.prepareStatement(sql.toString(), new String[] { fieldId });
+            PreparedStatement pstmt = conn.prepareStatement(sql.toString(), new String[]{fieldId});
             if (pstmt.executeUpdate() != 0) {
                 ResultSet rs = pstmt.getGeneratedKeys();
                 while (rs.next()) {
@@ -110,8 +115,8 @@ public class ObjectRepo {
             
             Statement pstmt = conn.createStatement();
             ResultSet rs = pstmt.executeQuery(sql.toString());
-
-            while(rs.next()) {
+            
+            while (rs.next()) {
                 Constructor<?> objectConstructor = clazz.getConstructor();
                 T object = (T) Objects.requireNonNull(objectConstructor.newInstance());
                 for (Field f : fields) {
@@ -155,11 +160,11 @@ public class ObjectRepo {
                                    .toArray(Field[]::new);
             
             // Used to create a camelCase string for the getter method that will be invoked
-            StringBuilder sql = new StringBuilder("update "  + getTableName(oClass) + " set ");
+            StringBuilder sql = new StringBuilder("update " + getTableName(oClass) + " set ");
             int i = 1;
             
             // Goes through each @Column annotated field in class and appends sql string with "column_name = fieldValue,"
-            for (Field field: fields) {
+            for (Field field : fields) {
                 field.setAccessible(true);
                 sql.append(getColumnName(field))
                    .append(" = ")
@@ -211,7 +216,8 @@ public class ObjectRepo {
             // Filters through fields in class for one annotated with @Column and @Id (there should only be one)
             Field field = Arrays.stream(oClass.getDeclaredFields())
                                 .filter(f -> f.isAnnotationPresent(Column.class) && f.isAnnotationPresent(Id.class))
-                                .findFirst().get();
+                                .findFirst()
+                                .get();
             
             // Finds and prepares to invoke the getter method for the field annotated with @Column and @Id
             field.setAccessible(true);
@@ -220,7 +226,7 @@ public class ObjectRepo {
             
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.executeUpdate();
-
+            
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
             e.printStackTrace();
@@ -231,7 +237,8 @@ public class ObjectRepo {
     }
     
     private String getTableName(Class<?> clazz) {
-        String tableName = clazz.getAnnotation(Table.class).name();
+        String tableName = clazz.getAnnotation(Table.class)
+                                .name();
         if (tableName.equals("")) {
             tableName = clazz.getName();
         }
@@ -239,16 +246,19 @@ public class ObjectRepo {
     }
     
     private String getColumnName(Field field) {
-        String columnName = field.getAnnotation(Column.class).name();
+        String columnName = field.getAnnotation(Column.class)
+                                 .name();
         if (columnName.equals("")) {
             columnName = field.getName();
         }
         return columnName;
     }
     
-    private <T> String encapsulateString (T t) {
+    private <T> String encapsulateString(T t) {
         StringBuilder s = new StringBuilder();
-        if (t.getClass().getSimpleName().equals("String")) {
+        if (t.getClass()
+             .getSimpleName()
+             .equals("String")) {
             s.append("\'")
              .append(t)
              .append("\'");
@@ -257,10 +267,11 @@ public class ObjectRepo {
         }
         return s.toString();
     }
-
+    
     private <T> void setObjectValues(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
         field.setAccessible(true);
-        switch (field.getType().getSimpleName()) {
+        switch (field.getType()
+                     .getSimpleName()) {
             case ("String"):
                 field.set(object, rs.getString(dbID));
                 break;
@@ -285,6 +296,7 @@ public class ObjectRepo {
     
     /**
      * Method to determine if the unique provided columns are not in the database.
+     *
      * @param conn
      * @param o
      * @return
@@ -295,13 +307,13 @@ public class ObjectRepo {
     public Boolean isEntryUnique(Connection conn, Object o) throws SQLException, IllegalAccessException {
         Class<?> oClass = Objects.requireNonNull(o.getClass());
         
-        if(!oClass.isAnnotationPresent(Entity.class)){
+        if (!oClass.isAnnotationPresent(Entity.class)) {
             throw new RuntimeException("Not an Entity type.");
         }
         //sql statement to be prepared
         Entity anoEntity = oClass.getAnnotation(Entity.class);
         String tableName = anoEntity.name();
-        String sql = "select * from "+ tableName+ " where ";
+        String sql = "select * from " + tableName + " where ";
         
         //get the id for look up
         
@@ -309,21 +321,74 @@ public class ObjectRepo {
         
         Field[] oClassFields = oClass.getDeclaredFields();
         
-        for(Field field : oClassFields){
+        for (Field field : oClassFields) {
             field.setAccessible(true);
             Column cn = field.getAnnotation(Column.class);
-            if(cn.unique() && field.get(o)!=null){
-                value = field.get(o).toString();
-                sql+=cn.name() +"=\'"+ value+"\'and ";
+            if (cn.unique() && field.get(o) != null) {
+                value = field.get(o)
+                             .toString();
+                sql += cn.name() + "=\'" + value + "\'and ";
             }
             
             field.setAccessible(false);
         }
-        String newSql = sql.substring(0,sql.length()-4);
+        String newSql = sql.substring(0, sql.length() - 4);
         System.out.println(newSql);
         PreparedStatement pstmt = conn.prepareStatement(newSql);
         ResultSet rs = pstmt.executeQuery();
         return !rs.next();
     }
+    
+    
+    public <T> Result<T> selectAllUsers(Connection conn, Class<T> clazz) {
+        List<T> objectList = new ArrayList<>();
+    
+        // All classes passed in must be annotated with @Entity
+        if (!clazz.isAnnotationPresent(Entity.class)) {
+            throw new RuntimeException("This is not an entity class!");
+        }
+    
+        // Filters through fields in class for ones annotated with @Column
+        Field[] fields = Arrays.stream(clazz.getDeclaredFields())
+                               .filter(f -> f.isAnnotationPresent(Column.class))
+                               .toArray(Field[]::new);
+    
+        //sql statement to be prepared
+        Entity anoEntity = clazz.getAnnotation(Entity.class);
+        String tableName = anoEntity.name();
+        String sql = "select * from " + tableName;
+       
+        try {
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                Constructor<?> objectConstructor = clazz.getConstructor();
+                T object = (T) Objects.requireNonNull(objectConstructor.newInstance());
+                for (Field f : fields) {
+                    setObjectValues(rs, f, object, getColumnName(f));
+                }
+                objectList.add(object);
+            }
+        } catch (NoSuchMethodException e) {
+            System.out.println("Constructor does not exist!");
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            System.out.println("Cannot invoke constructor!");
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            System.out.println("Cannot instantiate object!");
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            System.out.println("Constructor is not public!");
+            e.printStackTrace();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+    
+        return new Result<>(objectList);
+        
+    }
+    
     
 }

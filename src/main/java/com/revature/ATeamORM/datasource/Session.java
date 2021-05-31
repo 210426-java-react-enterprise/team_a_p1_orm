@@ -32,5 +32,9 @@ public class Session {
 	public void remove(Object object) throws SQLException {
 		repo.delete(connection, object);
 	}
+	
+	public <T> Result<T> findAllUsers(Class<T> clazz){
+		return repo.selectAllUsers(connection, clazz);
+	}
 
 }
