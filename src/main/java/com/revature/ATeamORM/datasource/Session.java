@@ -36,5 +36,9 @@ public class Session {
 	public <T> Result<T> findAllUsers(Class<T> clazz){
 		return repo.selectAllUsers(connection, clazz);
 	}
+	
+	public boolean isEntityUnique(Object object) throws SQLException, IllegalAccessException {
+		return repo.isEntryUnique(connection,object);
+	}
 
 }
