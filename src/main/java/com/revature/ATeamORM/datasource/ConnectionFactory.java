@@ -7,6 +7,7 @@ import com.revature.ATeamORM.annotations.JDBCConnection;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -135,15 +136,14 @@ public class ConnectionFactory {
 		if (filePath.startsWith("/")) {
 			filePath = filePath.substring(1, filePath.length() - 1);
 		}
-		if (!filePath.contains("src/main/resources/")) {
-			actualFilePath.append( "src/main/resources/");
-		}
 		actualFilePath.append(filePath);
 
 		// Tries to find properties file using designated filepath
 		Properties prop = new Properties();
 		try {
-			prop.load(new FileReader(actualFilePath.toString()));
+			ClassLoader loader = Thread.currentThread().getContextClassLoader();
+			InputStream input = loader.getResourceAsStream(actualFilePath.toString());
+			prop.load(input);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

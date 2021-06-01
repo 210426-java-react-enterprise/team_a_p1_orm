@@ -30,7 +30,7 @@ public class Result<T> {
 	 * @author Uros Vorkapic
 	 */
 	public T getFirstEntry() {
-		if (list.isEmpty()) {
+		if (list == null || list.isEmpty()) {
 			return null;
 		}
 		return list.get(0);
