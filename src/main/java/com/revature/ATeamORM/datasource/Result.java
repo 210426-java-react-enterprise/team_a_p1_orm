@@ -31,7 +31,7 @@ public class Result<T> {
 	 */
 	public T getFirstEntry() {
 
-		if(list.isEmpty()){
+		if (list == null || list.isEmpty()) {
 			return null;
 		}
 		return list.get(0);
