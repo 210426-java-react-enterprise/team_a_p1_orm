@@ -3,16 +3,20 @@ package com.revature.ATeamORM.repos;
 import com.revature.ATeamORM.annotations.Column;
 import com.revature.ATeamORM.annotations.Id;
 import com.revature.ATeamORM.annotations.Table;
-import com.revature.ATeamORM.datasource.Result;
+import com.revature.ATeamORM.annotations.Entity;
 
+import com.revature.ATeamORM.datasource.Result;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import com.revature.ATeamORM.annotations.Entity;
+
+import java.sql.*;
+
 import com.revature.ATeamORM.exceptions.NullFieldException;
+
 
 import java.util.*;
 
@@ -32,7 +36,7 @@ public class ObjectRepo {
      */
     public void create(Connection conn, Object object) throws SQLException {
         
-        try{
+        try {
             Class<?> oClass = Objects.requireNonNull(object.getClass());
             
             // All classes passed in must be annotated with @Entity
@@ -44,12 +48,12 @@ public class ObjectRepo {
             Field[] fields = Arrays.stream(oClass.getDeclaredFields())
                                    .filter(f -> f.isAnnotationPresent(Column.class) && !f.isAnnotationPresent(Id.class))
                                    .toArray(Field[]::new);
-          
+            
             StringBuilder sql = new StringBuilder("insert into " + getTableName(oClass) + " (");
             int i = 1;
-
+            
             // Gets the column_name and appends it to the sql string for each field annotated with @Column
-            for (Field field: fields) {
+            for (Field field : fields) {
                 field.setAccessible(true);
                 if (field.getAnnotation(Column.class).notNull() && field.get(object) == null) {
                     throw new NullFieldException();
@@ -65,7 +69,7 @@ public class ObjectRepo {
             i = 1;
             
             // Goes through each @Column annotated field in class and appends sql string with the value of the field
-            for (Field field: fields) {
+            for (Field field : fields) {
                 field.setAccessible(true);
                 sql.append(encapsulateString(field.get(object)));
                 if (i < fields.length) {
@@ -76,12 +80,15 @@ public class ObjectRepo {
             }
             sql.append(")");
             
-            Field field = Arrays.stream(oClass.getDeclaredFields()).filter(f -> f.isAnnotationPresent(Id.class)).findFirst().get();
+            Field field = Arrays.stream(oClass.getDeclaredFields())
+                                .filter(f -> f.isAnnotationPresent(Id.class))
+                                .findFirst()
+                                .get();
             field.setAccessible(true);
             String fieldId = getColumnName(field);
             field.setAccessible(false);
             // Puts sql string into a prepared statement, executes it, retrieves the id, then inserts new id back into object
-            PreparedStatement pstmt = conn.prepareStatement(sql.toString(), new String[] { fieldId });
+            PreparedStatement pstmt = conn.prepareStatement(sql.toString(), new String[]{fieldId});
             if (pstmt.executeUpdate() != 0) {
                 ResultSet rs = pstmt.getGeneratedKeys();
                 while (rs.next()) {
@@ -127,6 +134,7 @@ public class ObjectRepo {
             sql.append(getColumnName(field))
                .append(" = ")
                .append(encapsulateString(fieldValue));
+
 
             PreparedStatement pstmt = conn.prepareStatement(sql.toString());
             ResultSet rs = pstmt.executeQuery();
@@ -214,11 +222,11 @@ public class ObjectRepo {
                                    .toArray(Field[]::new);
             
             // Used to create a camelCase string for the getter method that will be invoked
-            StringBuilder sql = new StringBuilder("update "  + getTableName(oClass) + " set ");
+            StringBuilder sql = new StringBuilder("update " + getTableName(oClass) + " set ");
             int i = 1;
             
             // Goes through each @Column annotated field in class and appends sql string with "column_name = fieldValue,"
-            for (Field field: fields) {
+            for (Field field : fields) {
                 field.setAccessible(true);
                 if (field.getAnnotation(Column.class).notNull() && field.get(object) == null) {
                     throw new NullFieldException();
@@ -279,7 +287,8 @@ public class ObjectRepo {
             // Filters through fields in class for one annotated with @Column and @Id (there should only be one)
             Field field = Arrays.stream(oClass.getDeclaredFields())
                                 .filter(f -> f.isAnnotationPresent(Column.class) && f.isAnnotationPresent(Id.class))
-                                .findFirst().get();
+                                .findFirst()
+                                .get();
             
             // Finds and prepares to invoke the getter method for the field annotated with @Column and @Id
             field.setAccessible(true);
@@ -288,7 +297,7 @@ public class ObjectRepo {
             
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.executeUpdate();
-
+            
         } catch (IllegalAccessException e) {
             System.out.println("Cannot access that object");
             e.printStackTrace();
@@ -304,6 +313,7 @@ public class ObjectRepo {
      * @param o Object containing information to be checked if unique
      * @return true if entry does not exist in database, false otherwise. Always returns false if no @Columns are declared unique()
      * @throws SQLException Thrown if connection cannot be established or @Columns are not properly annotated
+     * @author Juan Mendoza, Uros Vorkapic
      */
     public Boolean isEntryUnique(Connection conn, Object o) throws SQLException {
         Class<?> oClass = Objects.requireNonNull(o.getClass());
@@ -351,7 +361,8 @@ public class ObjectRepo {
      * @author Uros Vorkapic
      */
     private String getTableName(Class<?> clazz) {
-        String tableName = clazz.getAnnotation(Table.class).name();
+        String tableName = clazz.getAnnotation(Table.class)
+                                .name();
         if (tableName.equals("")) {
             tableName = clazz.getName();
         }
@@ -365,12 +376,14 @@ public class ObjectRepo {
      * @author Uros Vorkapic
      */
     private String getColumnName(Field field) {
-        String columnName = field.getAnnotation(Column.class).name();
+        String columnName = field.getAnnotation(Column.class)
+                                 .name();
         if (columnName.equals("")) {
             columnName = field.getName();
         }
         return columnName;
     }
+
 
     /**
      * Ensures strings are properly encapsulated in single quotes before fed into sql query
@@ -381,7 +394,9 @@ public class ObjectRepo {
      */
     private <T> String encapsulateString (T t) {
         StringBuilder s = new StringBuilder();
-        if (t.getClass().getSimpleName().equals("String")) {
+        if (t.getClass()
+             .getSimpleName()
+             .equals("String")) {
             s.append("\'")
              .append(t)
              .append("\'");
@@ -405,7 +420,8 @@ public class ObjectRepo {
      */
     private <T> void setObjectValues(ResultSet rs, Field field, T object, String dbID) throws SQLException, IllegalAccessException {
         field.setAccessible(true);
-        switch (field.getType().getSimpleName()) {
+        switch (field.getType()
+                     .getSimpleName()) {
             case ("String"):
                 field.set(object, rs.getString(dbID));
                 break;
@@ -429,3 +445,5 @@ public class ObjectRepo {
     }
     
 }
+
+

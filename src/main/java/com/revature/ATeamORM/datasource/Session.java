@@ -84,10 +84,21 @@ public class Session implements AutoCloseable {
 	public void remove(Object object) throws SQLException {
 		repo.delete(connection, object);
 	}
-
-	public boolean isUnique(Object object) throws SQLException {
-		return repo.isEntryUnique(connection, object);
+	
+	
+	/**
+	 * Method that searches DB based on unique parameter from @Column annotation, returns true if provided
+	 * information is unique, false otherwise.
+	 * @param object	Object to that will search for if uniquely provided information is not present in DB.
+	 * @return			Boolean value, true information is unique and false otherwise.
+	 * @throws SQLException
+	 * @throws IllegalAccessException
+	 * @author Juan Mendoza
+	 */
+	public boolean isEntityUnique(Object object) throws SQLException, IllegalAccessException {
+		return repo.isEntryUnique(connection,object);
 	}
+	
 
 	/**
 	 * Opens a session by establishing a connection based on provided @ConnectionConfig and @JDBCConnection

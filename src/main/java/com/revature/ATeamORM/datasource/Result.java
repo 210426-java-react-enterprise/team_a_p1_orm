@@ -30,6 +30,7 @@ public class Result<T> {
 	 * @author Uros Vorkapic
 	 */
 	public T getFirstEntry() {
+
 		if (list == null || list.isEmpty()) {
 			return null;
 		}

@@ -136,6 +136,7 @@ public class ConnectionFactory {
 		if (filePath.startsWith("/")) {
 			filePath = filePath.substring(1, filePath.length() - 1);
 		}
+
 		actualFilePath.append(filePath);
 
 		// Tries to find properties file using designated filepath
