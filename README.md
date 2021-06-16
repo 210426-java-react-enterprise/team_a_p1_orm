@@ -6,7 +6,7 @@ Associated Web App can be found here: https://github.com/210426-java-react-enter
 Custom ORM used to abstract away boiler plate JDBC configuration and code. To set up and use the ORM on any application, follow the brief outline below.
 
 ## ORM Build
-To build as a maven dependency, use `mvn clean package` to build as team_a_p1_orm-1.0-SNAPSHOT.jar then `mvn install` to add to local m2. If performed on a live server, this action should be invoked from the web-app build spec.
+To build as a maven dependency, use `mvn clean package` to build as `team_a_p1_orm-1.0-SNAPSHOT.jar` then `mvn install` to add to local m2. If performed on a live server, this action should be invoked from the web-app build spec.
 
 ## Connecting to Database
 Currently only PostgreSQL drivers are supported.
