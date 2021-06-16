@@ -95,10 +95,9 @@ public class Session implements AutoCloseable {
 	 * @throws IllegalAccessException
 	 * @author Juan Mendoza
 	 */
-	public boolean isEntityUnique(Object object) throws SQLException, IllegalAccessException {
+	public boolean isEntityUnique(Object object) throws SQLException {
 		return repo.isEntryUnique(connection,object);
 	}
-	
 
 	/**
 	 * Opens a session by establishing a connection based on provided @ConnectionConfig and @JDBCConnection

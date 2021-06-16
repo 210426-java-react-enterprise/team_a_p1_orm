@@ -13,8 +13,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import java.sql.*;
-
 import com.revature.ATeamORM.exceptions.NullFieldException;
 
 
@@ -308,7 +306,7 @@ public class ObjectRepo {
     }
 
     /**
-     * Checks database to see if columns with unique() = true already exist. True means they do not, false means they do.
+     * Checks database to see if columns with unique() = true already exist. A return of True means they do not, false means they do.
      * @param conn Database connection this operation will be performed in.
      * @param o Object containing information to be checked if unique
      * @return true if entry does not exist in database, false otherwise. Always returns false if no @Columns are declared unique()

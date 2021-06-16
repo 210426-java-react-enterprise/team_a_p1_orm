@@ -89,6 +89,7 @@ public class ConnectionFactory {
 	 * @throws SQLException Throws if credentials for connection (url, username, or password) are invalid
 	 * @author Juan Mendoza, Uros Vorkapic, Vinson Chin
 	 */
+	@Deprecated // Do not use, functionality not fully tested
 	public Connection getConnection(Object o) throws DataSourceException, SQLException {
 		return getConnection(Objects.requireNonNull(o.getClass()));
 	}
@@ -98,6 +99,7 @@ public class ConnectionFactory {
 	 * @param newDriver The full package name of driver
 	 * @author Uros Vorkapic
 	 */
+	@Deprecated // Do not use, functionality not fully tested
 	public static void changeDriver(String newDriver) {
 		dbDriver = newDriver;
 	}
