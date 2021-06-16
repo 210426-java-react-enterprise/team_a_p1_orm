@@ -38,7 +38,7 @@ The following CRUD operations are provided by the ORM:
    - clazz: class of model to be built. e.g. User.class
    - fieldName: name of field being searched. e.g. "username"
    - fieldValue: value of field being searched. e.g. "John"
- * Session.findAll(Clazz<T> clazz) : Equivalent: SELECT * FROM <table> where <table> is the correctly annotated model class provided.
+ * Session.findAll(Clazz<T> clazz) : Equivalent: SELECT * FROM table where table is the correctly annotated model class provided.
    - clazz: class of model to be built. e.g. User.class
  * Session.save(Object object) : Saves object provided to database.
    - object: object that conforms to a properly annotated model that is to be updated/saved.
