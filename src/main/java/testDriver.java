@@ -5,6 +5,9 @@ import com.revature.ATeamORM.annotations.JDBCConnection;
 
 import java.sql.SQLException;
 
+/**
+ * Test Driver.
+ */
 @ConnectionConfig(filepath = "application.properties")
 @JDBCConnection(url = "${host_url}", username = "${username}", password = "${password}", schema = "${schema}")
 public class testDriver {

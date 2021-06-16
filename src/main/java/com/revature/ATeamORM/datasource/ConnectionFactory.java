@@ -4,11 +4,8 @@ import com.revature.ATeamORM.annotations.ConnectionConfig;
 import com.revature.ATeamORM.exceptions.DataSourceException;
 import com.revature.ATeamORM.annotations.JDBCConnection;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.annotation.Annotation;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;

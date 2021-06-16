@@ -1,5 +1,8 @@
 import com.revature.ATeamORM.annotations.*;
 
+/**
+ * Test User
+ */
 @Entity(name = "users")
 @Table(name = "users")
 public class AppUser {
